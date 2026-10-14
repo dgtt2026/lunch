@@ -1,0 +1,767 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>南京東路午餐輪盤</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&family=Noto+Sans+TC:wght@400;500;700;900&display=swap">
+<style>
+/* Layout: phone = one column (title, mode, filters, wheel card, result, list).
+   Wide screens = wheel column left, searchable list right.
+   The wheel shows at most 12 readable slices drawn at random from every place that fits the filters. */
+:root {
+  --bg: #f1f4ef;
+  --bg-2: #e4ece4;
+  --surface: #ffffff;
+  --surface-2: #f6f8f4;
+  --fg: #17211b;
+  --muted: #5b6b61;
+  --line: #d7e0d8;
+  --accent: #e2462f;
+  --accent-2: #ff8a4c;
+  --jade: #157a50;
+  --jade-deep: #0d4f34;
+  --gold: #f4c64a;
+  --s1: #f6c445; --s2: #f08a4b; --s3: #5bb48a; --s4: #6fa3d9; --s5: #e97a8c; --s6: #b99ae0;
+  --slice-text: #1a1f1b;
+  --shadow: 0 1px 2px rgba(13, 79, 52, .06), 0 14px 32px -18px rgba(13, 79, 52, .4);
+  --font-display: "Huninn", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --font-body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1612; --bg-2: #142019; --surface: #19241e; --surface-2: #1e2b24; --fg: #e9f0ea; --muted: #9db0a3; --line: #2b3a31;
+    --accent: #ff6a50; --accent-2: #ff9a62; --jade: #3fbf86; --jade-deep: #0a3524; --gold: #f2c14a;
+    --s1: #e0b23a; --s2: #e07c42; --s3: #46a77b; --s4: #5a92cc; --s5: #d76c7d; --s6: #a487d0;
+    --slice-text: #10150f; --shadow: 0 14px 32px -18px rgba(0, 0, 0, .7); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1612; --bg-2: #142019; --surface: #19241e; --surface-2: #1e2b24; --fg: #e9f0ea; --muted: #9db0a3; --line: #2b3a31;
+  --accent: #ff6a50; --accent-2: #ff9a62; --jade: #3fbf86; --jade-deep: #0a3524; --gold: #f2c14a;
+  --s1: #e0b23a; --s2: #e07c42; --s3: #46a77b; --s4: #5a92cc; --s5: #d76c7d; --s6: #a487d0;
+  --slice-text: #10150f; --shadow: 0 14px 32px -18px rgba(0, 0, 0, .7); color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; min-height: 100vh;
+  background: radial-gradient(120% 50% at 50% 0%, var(--bg-2), var(--bg) 70%) fixed, var(--bg);
+  color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 40px;
+  -webkit-tap-highlight-color: transparent;
+}
+button { font: inherit; color: inherit; }
+.app { max-width: 1080px; margin: 0 auto; display: grid; gap: 24px; grid-template-columns: minmax(0, 1fr); }
+.play { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+@media (min-width: 900px) {
+  .app { grid-template-columns: minmax(0, 460px) minmax(0, 1fr); gap: 40px; align-items: start; }
+  .side { position: sticky; top: 16px; max-height: calc(100vh - 32px); }
+  .side .list-wrap { overflow: auto; min-height: 0; flex: 1; padding-right: 4px; }
+}
+
+/* Header */
+header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.eyebrow { display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; color: var(--muted); }
+.line-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(1.75rem, 7vw, 2.3rem); line-height: 1.15; margin: 2px 0 0; }
+h1 em { font-style: normal; color: var(--accent); }
+.icon-btn { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface);
+  color: var(--muted); display: grid; place-items: center; cursor: pointer; box-shadow: var(--shadow); }
+.icon-btn svg { width: 20px; height: 20px; }
+.icon-btn[aria-pressed="false"] { color: var(--accent); }
+
+/* Mode tabs */
+.mode { display: grid; grid-template-columns: 1fr 1fr; background: var(--jade-deep); border-radius: 999px; padding: 4px; position: relative; }
+.mode button { font-family: var(--font-display); font-size: 1.05rem; min-height: 44px; border: 0; border-radius: 999px;
+  background: transparent; color: rgba(255,255,255,.72); cursor: pointer; transition: background .25s, color .25s; }
+.mode button[aria-selected="true"] { background: var(--gold); color: #2b2100; }
+
+/* Filters: label on the left, pills on the right */
+.filters { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 10px 12px; display: grid; gap: 8px; box-shadow: var(--shadow); }
+.frow { display: grid; grid-template-columns: 3.4em minmax(0, 1fr); align-items: center; gap: 8px; }
+.frow .lbl { font-size: .8rem; color: var(--muted); font-weight: 500; }
+.pills { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.pills button { min-height: 40px; padding: 2px 4px; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted);
+  border-radius: 12px; cursor: pointer; font-weight: 700; font-size: .9rem; line-height: 1.2;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; transition: background .2s, color .2s, border-color .2s, transform .1s; }
+.pills button:active { transform: scale(.97); }
+.pills button small { font-weight: 400; font-size: .68rem; opacity: .85; }
+.pills button[aria-pressed="true"] { background: var(--jade); border-color: var(--jade); color: #fff; }
+.price-pills button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); border-color: var(--accent); color: var(--accent); }
+.cat-pills button[aria-pressed="true"] { background: color-mix(in srgb, var(--gold) 30%, var(--surface)); border-color: var(--gold); color: var(--fg); }
+
+/* Wheel card */
+.wheel-card { background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 14px 14px 16px; box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 12px; }
+.readout { text-align: center; min-height: 2.2em; display: flex; flex-direction: column; justify-content: center; }
+.readout small { font-size: .75rem; color: var(--muted); }
+.readout b { font-family: var(--font-display); font-weight: 400; font-size: 1.25rem; line-height: 1.25; overflow-wrap: anywhere; }
+.stage { position: relative; isolation: isolate; width: 100%; max-width: 400px; margin: 0 auto; aspect-ratio: 1; }
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.pointer { position: absolute; left: 50%; top: -3%; width: 12%; transform: translateX(-50%); transform-origin: 50% 30%; z-index: 2;
+  filter: drop-shadow(0 4px 4px rgba(0,0,0,.3)); }
+.pointer.tick { animation: tick .1s ease-out; }
+@keyframes tick { 0% { transform: translateX(-50%) rotate(0); } 40% { transform: translateX(-50%) rotate(-14deg); } 100% { transform: translateX(-50%) rotate(0); } }
+.hub { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 24%; aspect-ratio: 1; border-radius: 50%; z-index: 2;
+  border: 0; cursor: pointer; color: #fff; font-family: var(--font-display); font-size: clamp(1.1rem, 5vw, 1.45rem);
+  background: radial-gradient(circle at 35% 30%, var(--accent-2), var(--accent) 62%);
+  box-shadow: 0 0 0 5px var(--surface), 0 0 0 9px var(--gold), 0 10px 24px rgba(0,0,0,.35); transition: transform .15s; }
+.hub:hover:not(:disabled) { transform: translate(-50%, -50%) scale(1.05); }
+.hub:active:not(:disabled) { transform: translate(-50%, -50%) scale(.95); }
+.hub:disabled { cursor: default; filter: saturate(.75); }
+.stage.live::after { content: ""; position: absolute; inset: -4%; border-radius: 50%; z-index: -1;
+  background: radial-gradient(circle, color-mix(in srgb, var(--gold) 55%, transparent) 40%, transparent 70%); animation: glow .6s ease-in-out infinite alternate; }
+@keyframes glow { from { opacity: .35; transform: scale(.97); } to { opacity: .9; transform: scale(1.03); } }
+.wheel-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: .82rem; color: var(--muted); }
+.wheel-meta b { color: var(--fg); font-variant-numeric: tabular-nums; }
+.ghost { min-height: 36px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); color: var(--fg);
+  cursor: pointer; font-size: .82rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
+.ghost svg { width: 15px; height: 15px; }
+.ghost:disabled { opacity: .45; cursor: default; }
+.cta { min-height: 56px; border: 0; border-radius: 16px; cursor: pointer; color: #fff; font-family: var(--font-display); font-size: 1.3rem; letter-spacing: .08em;
+  background: linear-gradient(180deg, var(--accent-2), var(--accent)); box-shadow: 0 6px 0 color-mix(in srgb, var(--accent) 60%, #000), 0 12px 22px -10px var(--accent);
+  transition: transform .1s, box-shadow .1s; }
+.cta:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 2px 0 color-mix(in srgb, var(--accent) 60%, #000); }
+.cta:disabled { cursor: default; filter: grayscale(.4); opacity: .75; }
+
+/* Last result */
+.ticket { position: relative; background: var(--surface); border-radius: 18px; padding: 18px 16px 14px; display: flex; flex-direction: column; gap: 8px;
+  border: 1px solid var(--line); box-shadow: var(--shadow); overflow: hidden; }
+.ticket::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 5px;
+  background: repeating-linear-gradient(90deg, var(--accent) 0 14px, var(--gold) 14px 28px); }
+.ticket.win { animation: pop .45s cubic-bezier(.2, 1.4, .4, 1); }
+@keyframes pop { 0% { transform: scale(.94); } 100% { transform: scale(1); } }
+.ticket .label { font-size: .75rem; color: var(--muted); }
+.ticket .name { font-family: var(--font-display); font-size: clamp(1.4rem, 6vw, 1.7rem); line-height: 1.25; overflow-wrap: anywhere; }
+.ticket .hint { color: var(--muted); font-size: .88rem; margin: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: .78rem; padding: 2px 10px; border-radius: 999px; background: var(--bg-2); color: var(--fg); font-variant-numeric: tabular-nums; }
+.chip.walk { background: var(--jade); color: #fff; font-weight: 700; }
+.chip.price { color: var(--accent); font-weight: 700; }
+.chip.stall, .chip.star { background: var(--gold); color: #3a2a00; font-weight: 700; }
+.review { margin: 0; font-size: .9rem; white-space: pre-line; }
+.links { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-link { font-size: .88rem; font-weight: 700; text-decoration: none; padding: 8px 14px; min-height: 44px; display: inline-flex; align-items: center;
+  border-radius: 12px; border: 1px solid var(--jade); color: var(--jade); }
+.btn-link.solid { background: var(--jade); color: #fff; }
+
+/* List */
+.side-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.side h2 { font-family: var(--font-display); font-weight: 400; font-size: 1.3rem; margin: 0; }
+.side-head span { font-size: .85rem; color: var(--muted); }
+.search { display: flex; gap: 8px; align-items: center; }
+.search input { flex: 1; min-width: 0; font: inherit; font-size: 16px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--fg); }
+.toggle { display: inline-flex; align-items: center; gap: 6px; font-size: .82rem; color: var(--muted); white-space: nowrap; cursor: pointer; min-height: 44px; }
+.toggle input { width: 18px; height: 18px; accent-color: var(--jade); }
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.list li { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px;
+  display: grid; grid-template-columns: 2.8em minmax(0, 1fr) auto; gap: 10px; align-items: start; }
+.list li.off { opacity: .45; }
+.list li.on-wheel { border-color: color-mix(in srgb, var(--gold) 70%, var(--line)); }
+.list .min { font-variant-numeric: tabular-nums; font-weight: 900; font-size: 1.05rem; color: var(--jade); text-align: center; line-height: 1.1; padding-top: 2px; }
+.list .min small { display: block; font-weight: 400; font-size: .68rem; color: var(--muted); }
+.list .top { display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; }
+.list .top b { font-weight: 700; }
+.list .p { font-size: .75rem; font-weight: 700; color: var(--accent); }
+.list .st { font-size: .75rem; font-weight: 700; }
+.list .tag { font-size: .7rem; font-weight: 700; padding: 0 7px; border-radius: 999px; background: var(--gold); color: #3a2a00; }
+.list .tag.bento { background: var(--s4); color: #0d1a2a; }
+.list .tag.wheel { background: var(--jade); color: #fff; }
+.list .sub { display: block; color: var(--muted); font-size: .78rem; overflow-wrap: anywhere; }
+.list details { font-size: .84rem; margin-top: 2px; }
+.list summary { cursor: pointer; color: var(--jade); width: fit-content; font-weight: 500; min-height: 28px; display: flex; align-items: center; }
+.list details p { margin: 2px 0; }
+.list .gmaps { font-size: .78rem; color: var(--jade); }
+.del { font-size: .78rem; border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 10px; padding: 4px 10px; min-height: 36px; cursor: pointer; }
+.del:hover { color: var(--accent); border-color: var(--accent); }
+.more { width: 100%; min-height: 44px; margin-top: 8px; border-radius: 12px; border: 1px dashed var(--line); background: transparent; color: var(--jade); font-weight: 700; cursor: pointer; }
+.empty { text-align: center; color: var(--muted); padding: 20px 0; margin: 0; }
+
+.add { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
+.add summary { cursor: pointer; padding: 12px 14px; font-weight: 700; font-size: .92rem; min-height: 44px; }
+.add form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; padding: 0 12px 12px; }
+.add input, .add select { font: inherit; font-size: 16px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--fg); min-width: 0; width: 100%; }
+.add .full { grid-column: 1 / -1; }
+.add button { font-weight: 700; border: 0; border-radius: 12px; padding: 12px; background: var(--jade); color: #fff; cursor: pointer; }
+.foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: .76rem; }
+.reset { background: transparent; color: var(--muted); border: 1px solid var(--line); border-radius: 10px; padding: 6px 12px; min-height: 36px; cursor: pointer; }
+.reset.armed { color: var(--accent); border-color: var(--accent); }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+
+/* Reveal popup */
+.confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 60; }
+body.modal-open { overflow: hidden; }
+.reveal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  background: rgba(8, 20, 14, .6); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); opacity: 0; transition: opacity .25s; }
+.reveal.show { opacity: 1; }
+.reveal-card { position: relative; width: min(420px, 100%); max-height: 100%; overflow: auto; background: var(--surface); color: var(--fg);
+  border-radius: 24px; padding: 0 18px 18px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 30px 60px rgba(0,0,0,.4);
+  transform: translateY(24px) scale(.85); transition: transform .45s cubic-bezier(.2, 1.4, .4, 1); }
+.reveal.show .reveal-card { transform: none; }
+.reveal-top { margin: 0 -18px 4px; padding: 22px 18px 18px; text-align: center; color: #fff; border-radius: 24px 24px 0 0;
+  background: radial-gradient(120% 120% at 50% 0%, var(--jade), var(--jade-deep)); display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.ribbon { font-size: .78rem; letter-spacing: .12em; font-weight: 700; color: #2b2100; background: var(--gold); padding: 3px 14px; border-radius: 999px; }
+.reveal-name { font-family: var(--font-display); font-weight: 400; font-size: clamp(1.8rem, 8vw, 2.3rem); line-height: 1.2; margin: 0; text-wrap: balance; overflow-wrap: anywhere; }
+.reveal-addr { margin: 0; font-size: .82rem; opacity: .85; }
+.reveal .chips, .reveal .links { justify-content: center; }
+.reveal .review { background: var(--surface-2); border-radius: 12px; padding: 10px 12px; }
+.reveal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+.reveal-actions button { font-weight: 700; min-height: 48px; border-radius: 14px; cursor: pointer; }
+.reveal-actions .again { background: transparent; border: 1px solid var(--line); color: var(--fg); }
+.reveal-actions .ok { background: var(--accent); border: 0; color: #fff; }
+@media (prefers-reduced-motion: reduce) {
+  .ticket.win, .pointer.tick, .stage.live::after { animation: none; }
+  .reveal, .reveal-card { transition: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="play">
+    <header>
+      <div>
+        <span class="eyebrow"><i class="line-dot" style="background:#008659"></i><i class="line-dot" style="background:#f8b61c"></i>從南京東路二段111號出發</span>
+        <h1>今天中午<em id="h1what">吃什麼</em>？</h1>
+      </div>
+      <button class="icon-btn" id="mute" type="button" aria-label="音效">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M11 5 6 9H3v6h3l5 4z"/><path id="muteWave" d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/><path id="muteX" d="m16 9 6 6m0-6-6 6"/>
+        </svg>
+      </button>
+    </header>
+
+    <div class="mode" role="tablist" aria-label="輪盤">
+      <button type="button" role="tab" data-m="food">午餐</button>
+      <button type="button" role="tab" data-m="drink">飲料</button>
+    </div>
+
+    <div class="filters">
+      <div class="frow">
+        <span class="lbl">走路</span>
+        <div class="pills walk-pills" role="group" aria-label="步行時間">
+          <button type="button" data-r="5">5 分鐘<small id="c5"></small></button>
+          <button type="button" data-r="10">10 分鐘<small id="c10"></small></button>
+          <button type="button" data-r="15">15 分鐘<small id="c15"></small></button>
+        </div>
+      </div>
+      <div class="frow" id="rowCat">
+        <span class="lbl">類型</span>
+        <div class="pills cat-pills" role="group" aria-label="類型，可複選">
+          <button type="button" data-c="restaurant">餐廳</button>
+          <button type="button" data-c="bento">便當</button>
+          <button type="button" data-c="stall">小吃攤</button>
+        </div>
+      </div>
+      <div class="frow" id="rowPrice">
+        <span class="lbl">預算</span>
+        <div class="pills price-pills" role="group" aria-label="預算，可複選">
+          <button type="button" data-p="$">$<small>150 以下</small></button>
+          <button type="button" data-p="$$">$$<small>150–300</small></button>
+          <button type="button" data-p="$$$">$$$<small>300 以上</small></button>
+        </div>
+      </div>
+    </div>
+
+    <section class="wheel-card" aria-label="輪盤">
+      <div class="readout" aria-hidden="true"><small id="roLabel">本輪候選</small><b id="roName">按下「開始轉」</b></div>
+      <div class="stage" id="stage">
+        <canvas id="wheel" role="img" aria-label="午餐輪盤"></canvas>
+        <svg class="pointer" id="pointer" viewBox="0 0 60 80" aria-hidden="true">
+          <path d="M30 78 L8 26 A24 24 0 1 1 52 26 Z" fill="var(--accent)" stroke="var(--surface)" stroke-width="4" stroke-linejoin="round"/>
+          <circle cx="30" cy="24" r="8" fill="var(--gold)"/>
+        </svg>
+        <button class="hub" id="hub" type="button" aria-label="開始轉">轉！</button>
+      </div>
+      <div class="wheel-meta">
+        <span id="wheelInfo"></span>
+        <button class="ghost" id="reroll" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.5 6.2L3 16M3 21v-5h5"/></svg>換一批
+        </button>
+      </div>
+      <button class="cta" id="spin" type="button">開始轉</button>
+    </section>
+
+    <div class="ticket" id="ticket" aria-live="polite">
+      <span class="label" id="rLabel">上一次轉到</span>
+      <span class="name" id="rName">還沒轉</span>
+      <p class="hint" id="rHint">選好走路時間和預算，按「開始轉」讓輪盤決定。</p>
+      <div class="chips" id="rChips"></div>
+      <p class="review" id="rReview" hidden></p>
+      <div class="links" id="rLinks"></div>
+    </div>
+  </div>
+
+  <div class="side">
+    <div class="side-head"><h2 id="listTitle">附近的店</h2> <span id="count"></span></div>
+    <div class="search">
+      <input id="q" type="search" placeholder="搜尋店名或類型，例如：拉麵" aria-label="搜尋店家">
+      <label class="toggle"><input type="checkbox" id="showAll">含不符合的</label>
+    </div>
+    <div class="list-wrap">
+      <ul class="list" id="list"></ul>
+      <p class="empty" id="empty" hidden>沒有符合的店，換個關鍵字或放寬條件試試。</p>
+      <button class="more" id="more" type="button" hidden></button>
+    </div>
+
+    <details class="add">
+      <summary>加一家自己的口袋名單</summary>
+      <form id="addForm">
+        <input id="fName" class="full" placeholder="店名，例如：巷口滷肉飯" required maxlength="24">
+        <input id="fType" placeholder="類型，例如：便當" maxlength="12">
+        <select id="fMin" aria-label="步行分鐘"></select>
+        <select id="fPrice" aria-label="價位">
+          <option value="$">$ 150 以下</option><option value="$$" selected>$$ 150–300</option><option value="$$$">$$$ 300 以上</option>
+        </select>
+        <select id="fKind" aria-label="午餐或飲料">
+          <option value="food">午餐</option><option value="drink">飲料</option>
+        </select>
+        <select id="fCat" class="full" aria-label="店型">
+          <option value="restaurant">餐廳</option><option value="bento">便當餐盒</option><option value="stall">小吃攤</option>
+        </select>
+        <button class="full" type="submit">加入輪盤</button>
+      </form>
+    </details>
+
+    <div class="foot">
+      <span>評分、營業時間與評論摘要整理自 Google 地圖（2026 年 10 月）；步行時間依直線距離估算。清單只存在這台裝置。</span>
+      <button class="reset" id="reset" type="button">恢復預設清單</button>
+    </div>
+  </div>
+</div>
+
+<canvas id="confetti" class="confetti" hidden aria-hidden="true"></canvas>
+<div class="reveal" id="reveal" role="dialog" aria-modal="true" aria-labelledby="mName" hidden>
+  <div class="reveal-card">
+    <div class="reveal-top">
+      <span class="ribbon" id="mLabel">今天中午就吃這家</span>
+      <h2 class="reveal-name" id="mName"></h2>
+      <p class="reveal-addr" id="mAddr"></p>
+    </div>
+    <div class="chips" id="mChips"></div>
+    <p class="review" id="mReview"></p>
+    <div class="links" id="mLinks"></div>
+    <div class="reveal-actions">
+      <button type="button" class="again" id="mAgain">換一批再轉</button>
+      <button type="button" class="ok" id="mOk">就決定是你了</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const KEY = 'nanjing-lunch-wheel-v4';
+const OLD_KEYS = ['nanjing-lunch-wheel-v3', 'nanjing-lunch-wheel-v2', 'nanjing-lunch-wheel-v1'];
+// Names from the hand-made list before Google data, so a migration keeps only what the viewer added.
+const OLD_DEFAULT_NAMES = ["超商隨便吃", "彌生軒 YAYOI", "韓食村", "麵大廚", "大戈壁蒙古烤肉", "丰禾台味風格料理 南京東店", "梁記嘉義雞肉飯", "四代目菊川", "世界的山將", "巧合珍牛肉麵", "銀魚泰國料理", "阿娥水餃", "i", "GET POWER 給力盒子 一江店", "蔡天吉 一江便當", "富霸王豬腳", "泰芝味 泰式炭烤", "伊通街知高飯", "九記何燒臘", "名門燒臘 伊通店", "池稻懷舊便當 合江店", "超商飲料", "麻古茶坊 松江南京店", "客美多咖啡", "滿上仙草茶飲", "金五春 伊通店", "滿食茶間", "洞茶 So tea so me", "稻香石磨腸粉", "無名麵店", "厝角", "佳佳小吃店", "蘭芳麵食館", "四鄉五島馬祖麵店", "彌生軒"];
+const ORIGIN = '台北市南京東路二段111號';
+const DEFAULTS = [{"name": "超商隨便吃","type": "7-11／全家","kind": "food","cat": "restaurant","min": 1,"price": "$","cost": "約 60–120 元","addr": "","review": "最快的選項，懶得排隊、趕會議時的保底。"},{"name": "YAYOI彌生軒 南京松江店","type": "日式定食","kind": "food","cat": "restaurant","min": 2,"dist": 88,"price": "$$$","cost": "約 400–600 元","addr": "南京東路二段97號1樓","review": "白飯粒粒分明、可加飯；壽喜燒南蠻炸雞偏鹹；炸豬排有溫泉蛋，會一直加水；收一成服務費，人多建議訂位","rating": 4.1,"count": 2378,"hours": "一至五 11:00-15:30,17:00-22:00 / 六日 11:00-22:00","cid": "11987763616615039968"},{"name": "韓食村","type": "韓式家常菜","kind": "food","cat": "restaurant","min": 2,"dist": 111,"price": "$$","cost": "約 200–400 元","addr": "南京東路二段115巷3弄6號","review": "老闆韓國人口味道地，炒碼麵被大推；上菜快、份量大；也有人說尖峰等很久、湯變鹹、人到齊才入座","rating": 4.2,"count": 1809,"hours": "一至六 11:15-14:00,17:00-21:00 / 日休","cid": "1940525319303924954"},{"name": "麵大廚 四平店","type": "麵食・豆花吃到飽","kind": "food","cat": "restaurant","min": 2,"dist": 74,"price": "$$","cost": "約 200–400 元","addr": "南京東路二段115巷18-1號","review": "豆花無限享用CP值高；掃碼點餐自助機結帳只收現金；牛肉大塊、乾拌麵辣醬好；番茄湯被嫌化學味、價格220偏高","rating": 4.3,"count": 1691,"hours": "一至五 11:30-14:30,16:30-21:00 / 六日 11:30-21:00","cid": "16678982464231703900"},{"name": "富霸王豬腳","type": "豬腳便當","kind": "food","cat": "bento","min": 2,"dist": 87,"price": "$$","cost": "約 200–400 元","addr": "南京東路二段115巷20號","review": "排隊名店，開門前就大排長龍，腿庫要早到；苦瓜、味噌湯好評；便當不能選配菜；店小常併桌","rating": 4.0,"count": 6435,"hours": "二至六 11:00-19:30 / 日一休","cid": "13443172875240523976"},{"name": "泰芝味 泰式炭烤","type": "泰式炭烤便當","kind": "food","cat": "bento","min": 2,"dist": 107,"price": "$","cost": "約 200 元以內","addr": "南京東路二段115巷3弄1-1號","review": "炭烤雞腿飯130元又香又嫩無骨；內用白飯湯飲料自取續；打拋豬偏辣；泰味不算重，老闆熱情","rating": 3.8,"count": 306,"hours": "一至六 11:00-20:00 / 日休","cid": "3658921787244490430"},{"name": "i'm pasta 松江店","type": "平價義大利麵","kind": "food","cat": "restaurant","min": 2,"dist": 95,"price": "$","cost": "約 200 元以內","addr": "南京東路二段115巷3弄2-1號","review": "平價義大利麵CP值高，白醬濃；環境乾淨但座位緊湊、適合快速吃；菜單不好懂","rating": 4.0,"count": 1281,"hours": "每日 11:00-14:30,16:30-20:30","cid": "15452947170818900431"},{"name": "食彩櫻","type": "日式家庭料理","kind": "food","cat": "restaurant","min": 2,"dist": 83,"price": "$$","cost": "約 200–400 元","addr": "松江路123巷8之1號","review": "老夫婦經營的家庭式日料，現炸炸雞很大塊，雙拼便當實惠；座位少，吃完衣服會有油煙味","rating": 4.4,"count": 551,"hours": "一至五 11:30-14:00,17:00-20:30 / 六日休","cid": "7422752513272093445"},{"name": "木釜自然 日式釜飯健康餐盒","type": "釜飯餐盒","kind": "food","cat": "bento","min": 2,"dist": 89,"price": "$","cost": "約 200 元以內","addr": "松江路123巷8-2號","review": "釜飯健康餐盒用心製作，約140元；內用只有吧台座；有人嫌加價肉量少、青菜沒調味","rating": 4.5,"count": 153,"hours": "一至五 11:00-13:30,16:30-19:30 / 六日休","cid": "16323700035877554525"},{"name": "阿麗越南河粉 四平店","type": "越南河粉","kind": "food","cat": "stall","min": 2,"dist": 89,"price": "$","cost": "約 200 元以內","addr": "南京東路二段115巷3弄4號","review": "牛肉清湯河粉清爽不油、河粉大碗肉多，炒河粉牛肉軟嫩；內用送紅茶；桌面偏油","rating": 4.3,"count": 85,"hours": "一至五 11:00-20:00 / 六日休","cid": "3745280190915159553"},{"name": "高麗菜飯","type": "高麗菜飯・排骨湯","kind": "food","cat": "stall","min": 2,"dist": 94,"price": "$","cost": "約 200 元以內","addr": "南京東路二段115巷3弄4-3號","review": "蝦米紅蔥爆香的高麗菜飯噴香，排骨湯鮮美骨肉易分離；晚去高麗菜飯會賣完","rating": 4.6,"count": 117,"hours": "一至五 11:30-14:30,17:00-20:00 / 六日休","cid": "4345029805203540670"},{"name": "Dr.salt 健康水煮餐盒","type": "雞胸健康餐盒","kind": "food","cat": "bento","min": 2,"dist": 99,"price": "$","cost": "約 200 元以內","addr": "南京東路二段115巷3弄1號1樓","review": "舒肥雞胸軟嫩不柴，配菜清脆，約100–110元；老闆親切，可 LINE Pay","rating": 4.5,"count": 290,"hours": "每日 09:00-17:00","cid": "2969870517029677897"},{"name": "丰禾 台味風格料理 台北南京東店","type": "台菜（王品集團）","kind": "food","cat": "restaurant","min": 3,"dist": 131,"price": "$$$","cost": "約 400–600 元","addr": "南京東路二段146號2F","review": "台北CP值很高的台菜，糖醋魚片麻油蛋好吃、份量足；王品旗下有用餐時限，適合聚餐，包廂低消7000","rating": 4.6,"count": 8851,"hours": "一至五 11:30-14:30,17:30-22:00 / 六日 11:00-14:30,17:00-22:00","cid": "8701877406825100384"},{"name": "今日魚市 南京店（原丼賞和食）","type": "生魚片丼飯","kind": "food","cat": "restaurant","min": 3,"dist": 120,"price": "$$$","cost": "約 400–600 元","addr": "南京東路二段140號B1","review": "生魚片給得很足、味噌湯用魚肉熬；機器付款；份量充足，強烈建議先訂位；座位偏擠","rating": 4.7,"count": 15589,"hours": "每日 11:30-15:00,17:30-21:00","cid": "12890303768405690978"},{"name": "咖哩爸爸","type": "日式・印度咖哩","kind": "food","cat": "stall","min": 3,"dist": 120,"price": "$","cost": "約 200 元以內","addr": "南京東路二段115巷3弄6之1號","review": "小碗咖哩80元很實惠但料偏少；日式不辣、印度咖哩也不太辣，就是純粹咖哩飯","rating": 3.7,"count": 131,"hours": "一至五 11:00-14:00 / 六日休","cid": "6179078889492293173"},{"name": "WoWwu 哇嗚咖喱","type": "日式咖哩","kind": "food","cat": "stall","min": 3,"dist": 127,"price": "$","cost": "約 200 元以內","addr": "四平街55號","review": "咖哩濃郁不過鹹，牛肉咖哩150元料多軟嫩，還加高麗菜；老闆超親切可免費加料","rating": 5.0,"count": 71,"hours": "一至五 11:00-19:30 / 六日休","cid": "5912549217765504635"},{"name": "銀魚泰國料理 松江店","type": "泰式","kind": "food","cat": "restaurant","min": 3,"dist": 137,"price": "$","cost": "約 200 元以內","addr": "松江路140巷7-1號","review": "椒麻雞110元有麻不太辣，奶茶西米露白飯可續；晚到打拋豬綠咖哩會賣完","rating": 4.5,"count": 663,"hours": "一至五 11:00-14:00 / 六日休","cid": "13292991760556718764"},{"name": "小巷子清燉牛肉麵 四平店","type": "清燉牛肉麵","kind": "food","cat": "stall","min": 3,"dist": 149,"price": "$","cost": "約 200 元以內","addr": "四平街40號","review": "清燉湯頭清爽、續湯大方，羊肉麵好評；掃碼點餐付款；重口味的人可能覺得淡","rating": 4.7,"count": 1494,"hours": "每日 10:30-20:30","cid": "14249100422474506692"},{"name": "羅媽媽小吃店","type": "家常菜便當","kind": "food","cat": "stall","min": 3,"dist": 152,"price": "$","cost": "約 200 元以內","addr": "四平街32號","review": "台北少見的佛心價，最貴才85元，四道配菜可選、可加飯；每天一道主菜加滑蛋蝦仁和鮮魚","rating": 4.4,"count": 151,"hours": "一至五 10:30-19:30 / 六日休","cid": "644611984087214587"},{"name": "金鳳越南美味","type": "越南河粉","kind": "food","cat": "stall","min": 3,"dist": 161,"price": "$","cost": "約 200 元以內","addr": "伊通街106巷16號","review": "湯頭有熬、老闆娘可愛；菜單都能做素；生牛肉河粉130元被嫌肉少偏油","rating": 3.9,"count": 317,"hours": "每日 11:00-20:30","cid": "3130034641280462294"},{"name": "OLiA 吃飯","type": "日式丼飯","kind": "food","cat": "restaurant","min": 3,"dist": 172,"price": "$","cost": "約 200 元以內","addr": "伊通街106巷8號","review": "精緻小份量適合女生，牡蠣炸蝦飯180元；湯自助、可免費加飯；牛飯偏甜","rating": 4.3,"count": 359,"hours": "一至五 11:30-14:30,16:30-20:00 / 六日休","cid": "982499495991907143"},{"name": "四芳傳統小吃","type": "台式小吃","kind": "food","cat": "stall","min": 3,"dist": 173,"price": "$","cost": "約 200 元以內","addr": "一江街31號","review": "轉角老店，40幾個座位，小菜炸物出菜快；雞肉飯和滷味普通；只收現金","rating": 3.7,"count": 177,"hours": "一至五 11:00-21:00 / 六日休","cid": "16915171753228024924"},{"name": "大戈壁蒙古烤肉 松江創始店","type": "蒙古烤肉吃到飽","kind": "food","cat": "restaurant","min": 4,"dist": 187,"price": "$$$","cost": "約 400–600 元","addr": "松江路152號3樓","review": "平日午429、假日539加一成；限時100分鐘不趕人；座位寬敞；蒙古烤肉要等師傅炒、人多動線擠；火鍋熟食甜點吃到飽","rating": 4.1,"count": 9953,"hours": "每日 11:00-15:30,17:00-21:00","cid": "8036548110142401267"},{"name": "伊通街知高飯","type": "豬腳飯","kind": "food","cat": "bento","min": 4,"dist": 205,"price": "$","cost": "約 200 元以內","addr": "南京東路二段174號","review": "知高飯110元，豬肉滷得鹹香不軟爛，配辣菜圃好吃；飯量剛好上班族份量；湯可免費續","rating": 3.8,"count": 455,"hours": "一至五 10:30-19:00 / 六日休","cid": "18004930515903421796"},{"name": "名門燒臘 伊通店","type": "燒臘便當","kind": "food","cat": "bento","min": 4,"dist": 218,"price": "$","cost": "約 200 元以內","addr": "伊通街44號1樓","review": "便當約135元，七種燒臘自選、可選肥瘦、加60元多50%肉；燒鴨皮油亮多汁、油雞嫩；11點多就排隊；酸菜偏甜","rating": 4.2,"count": 939,"hours": "一至五 10:30-19:00 / 六 10:30-14:00,15:30-18:00 / 日休","cid": "13241140750160917875"},{"name": "臻食館 碳燒原食手作盒餐","type": "炭燒健康餐盒","kind": "food","cat": "bento","min": 4,"dist": 175,"price": "$","cost": "約 200 元以內","addr": "伊通街94巷15、16號攤位（建國市場內）","review": "炭燒健康餐，肉質鮮嫩帶檸檬香，包裝有質感；份量偏小但精緻","rating": 4.6,"count": 35,"hours": "一至五 11:30-14:00 / 六日休","cid": "15976903495739366763"},{"name": "蛋白盒子健康低卡餐盒 伊通店","type": "健康餐盒","kind": "food","cat": "bento","min": 4,"dist": 176,"price": "$","cost": "約 200 元以內","addr": "伊通街83號","review": "低卡健康餐盒；評論說這間菜量少、湯汁多、肉量少，調味不穩","rating": 4.1,"count": 133,"hours": "一至五 10:30-14:30,16:00-20:00 / 六日 10:30-14:00,16:00-20:00","cid": "11886603032614066789"},{"name": "卡洛貍健康餐盒 松江南京店","type": "健康餐盒","kind": "food","cat": "bento","min": 4,"dist": 183,"price": "$","cost": "約 200 元以內","addr": "伊通街93號1樓","review": "少油少鹽、飯量足，調味不錯；豬肉稍柴；有人反映品管問題","rating": 4.2,"count": 297,"hours": "一至五 10:30-14:00,15:30-19:30 / 六日休","cid": "12667127568645362569"},{"name": "清水越南河粉","type": "越南河粉・米線","kind": "food","cat": "stall","min": 4,"dist": 196,"price": "$","cost": "約 200 元以內","addr": "伊通街87巷2號","review": "湯頭濃郁清爽、份量大料多，牛肉嫩魚片大塊；涼拌豬肉米線被大推；出餐快座位多","rating": 4.7,"count": 296,"hours": "一至五 11:30-15:00,17:00-20:30 / 六 11:30-20:30 / 日休","cid": "10139030563512762458"},{"name": "泰迪農園咖哩 一江店","type": "日式咖哩","kind": "food","cat": "restaurant","min": 4,"dist": 209,"price": "$$","cost": "約 200–400 元","addr": "一江街15號1樓","review": "原型食物咖哩，蔬菜鮮甜，兩種咖哩醬可混；豬排嫩；份量偏少，男生可能吃不飽","rating": 4.2,"count": 717,"hours": "每日 11:00-14:30,17:00-20:00","cid": "6542468444563209581"},{"name": "鑫爺食堂","type": "燒肉飯・紅燒肉飯","kind": "food","cat": "stall","min": 4,"dist": 219,"price": "$","cost": "約 200 元以內","addr": "一江街38號","review": "燒肉飯125元很強，紅燒肉飯放久也好吃；只外帶，中午要排 5–10 分鐘","rating": 4.4,"count": 95,"hours": "一至五 10:30-19:00 / 六日休","cid": "4423977697976171465"},{"name": "林媽媽麵攤","type": "傳統麵攤","kind": "food","cat": "stall","min": 4,"dist": 224,"price": "$","cost": "約 200 元以內","addr": "伊通街59巷2號","review": "路邊麵攤，肉燥乾麵小碗45元不死鹹，滷味切一大袋；還有水餃、牛肉麵和便當80元","rating": 4.6,"count": 40,"hours": "一至五 11:00-17:00 / 六日休","cid": "6359497678679859467"},{"name": "巧合珍牛肉麵 長春店","type": "牛肉麵","kind": "food","cat": "restaurant","min": 5,"dist": 265,"price": "$$","cost": "約 200–400 元","addr": "長春路149-3號","review": "湯頭帶淡淡中藥香、微辣順口；牛筋Q彈，可加湯；午餐要排約5分鐘，先付錢出餐快；滷味好吃","rating": 4.5,"count": 519,"hours": "日至五 11:00-14:30,17:00-20:00 / 六休","cid": "16506017029908056203"},{"name": "銀魚泰國料理","type": "泰式","kind": "food","cat": "restaurant","min": 5,"dist": 287,"price": "$","cost": "約 200 元以內","addr": "建國北路一段138巷24號","review": "主菜110元，椒麻雞咖哩雞大推，白飯泰奶西米露吃到飽；偏台式泰味；12點後排隊，只收現金","rating": 4.5,"count": 583,"hours": "一至五 11:00-14:00 / 六日休","cid": "11778442150513628102"},{"name": "GET POWER 給力盒子 一江店","type": "健康餐盒","kind": "food","cat": "bento","min": 5,"dist": 234,"price": "$","cost": "","addr": "一江街10之1號","review": "健康餐盒口味清爽、飯可換地瓜；樹子鱸魚、滷牛腱受歡迎；價格偏高，中午要排一下","rating": 4.0,"count": 323,"hours": "一至五 10:30-14:00,16:00-19:00 / 六日休","cid": "1019856102989718506"},{"name": "純真鷄肉 土雞餐盒專門店","type": "土雞便當","kind": "food","cat": "bento","min": 5,"dist": 231,"price": "$","cost": "約 200 元以內","addr": "伊通街113號1樓","review": "土雞肉有嚼勁、去骨，白斬雞飯130元，可換多菜；有人吃到肥肉或偏柴","rating": 4.1,"count": 120,"hours": "一至五 11:00-14:30,16:30-20:30 / 六日休","cid": "10770534176120913978"},{"name": "Kanokwan 老麵攤","type": "泰式麵食","kind": "food","cat": "restaurant","min": 5,"dist": 233,"price": "$$","cost": "約 200–400 元","addr": "四平街21號1樓","review": "泰式風味道地，船麵湯頭濃郁、打拋豬瘦肉多；海鮮炒粿條195元；口味偏鹹","rating": 4.3,"count": 5801,"hours": "一至五 10:30-21:00 / 六 10:30-20:30 / 日休","cid": "1112302249367170284"},{"name": "越食讚 越南料理","type": "越南河粉","kind": "food","cat": "stall","min": 5,"dist": 239,"price": "$","cost": "約 200 元以內","addr": "四平街116號","review": "牛肉河粉、香菜水餃好吃，蒜頭辣椒加分；老闆大方","rating": 4.6,"count": 23,"hours": "每日 10:00-21:30","cid": "8035821195701455447"},{"name": "台越越南美食","type": "越南米線・河粉","kind": "food","cat": "stall","min": 5,"dist": 252,"price": "$","cost": "約 200 元以內","addr": "一江街52號","review": "涼拌米線用涼米線、調味夠酸，炸春捲酥脆；出餐快、一個人吃也友善","rating": 4.4,"count": 339,"hours": "一至四 11:00-19:30 / 五 11:00-15:00 / 六日休","cid": "5796466526105519083"},{"name": "五雞盒飯","type": "雞腿便當","kind": "food","cat": "bento","min": 5,"dist": 259,"price": "$","cost": "約 200 元以內","addr": "長春路149之2號1樓","review": "多種雞腿便當，烤雞腿噴香、配菜自選三樣；下午三點後菜會冷","rating": 4.2,"count": 182,"hours": "一至五 08:30-20:00 / 六 09:00-14:00 / 日休","cid": "17312536361517181806"},{"name": "雞三和 松江南京店","type": "名古屋雞料理","kind": "food","cat": "restaurant","min": 5,"dist": 267,"price": "$$$","cost": "約 400–600 元","addr": "南京東路二段202號","review": "雞肉串和湯泡飯不錯；評論多說價格偏高、座位小椅子不舒服","rating": 3.7,"count": 651,"hours": "一至五 11:30-15:00,17:00-22:00 / 六日 11:30-22:00","cid": "10221577378891860555"},{"name": "偉富麵館","type": "涼麵・排骨","kind": "food","cat": "stall","min": 5,"dist": 273,"price": "$","cost": "約 200 元以內","addr": "伊通街135號","review": "涼麵Q彈麻醬濃郁不膩，排骨和味噌湯水準以上；中午滿座、冷氣不太涼","rating": 4.0,"count": 628,"hours": "一至六 07:00-20:00 / 日休","cid": "13141260105362050048"},{"name": "CoCo壱番屋 南京建國店","type": "日式咖哩","kind": "food","cat": "restaurant","min": 5,"dist": 288,"price": "$$","cost": "約 200–400 元","addr": "南京東路二段208號","review": "飯量和辣度可自選、少飯少錢；口味穩定的連鎖咖哩；偶有雞肉偏柴、飯黏的負評","rating": 4.0,"count": 548,"hours": "每日 11:00-22:00","cid": "9657251424426384006"},{"name": "四代目菊川 台北中山店","type": "鰻魚飯","kind": "food","cat": "restaurant","min": 6,"dist": 296,"price": "$$$","cost": "約 1000–1200 元","addr": "南京東路二段63號","review": "關西派烤鰻，表皮酥脆肉軟、醬汁偏鹹；口味接近日本；座位擁擠，價位高","rating": 4.4,"count": 1474,"hours": "每日 11:30-15:00,17:30-19:30","cid": "8375487765077849579"},{"name": "世界的山將 南京店","type": "名古屋雞翅","kind": "food","cat": "restaurant","min": 6,"dist": 293,"price": "$$$","cost": "約 400–1000 元","addr": "南京東路二段63號","review": "招牌胡椒雞翅香但肉不多；牛腸鍋+雜炊被推；500元有划算套餐；客人很多日本人","rating": 4.0,"count": 914,"hours": "每日 11:30-22:00","cid": "15809924287668648554"},{"name": "李記食堂 刈包・四神湯","type": "刈包・四神湯・乾麵","kind": "food","cat": "stall","min": 6,"dist": 303,"price": "$","cost": "約 200 元以內","addr": "松江路108巷27號","review": "上班族愛店，平價炸雞和乾麵受歡迎，有素刈包；也有炸雞沒熟、店家回應差的負評","rating": 3.5,"count": 378,"hours": "一至五 11:00-20:00 / 六日休","cid": "9490813666160202298"},{"name": "男朋友・家 男朋友餐盒","type": "日式健康餐盒","kind": "food","cat": "bento","min": 6,"dist": 317,"price": "$$","cost": "約 200–400 元","addr": "建國北路二段64巷15號","review": "日式家庭風健康餐，豬肉不柴、玉子燒好吃，舒肥櫻桃鴨受歡迎；中午外帶多","rating": 4.4,"count": 452,"hours": "一至五 12:00-17:00 / 六日休","cid": "3578755709511025276"},{"name": "米本便當店","type": "排骨雞排便當","kind": "food","cat": "bento","min": 6,"dist": 324,"price": "$","cost": "約 200 元以內","addr": "長春路133-4號","review": "簡單快速的便當店，份量足、價格適中，雞排酥而不油；菜色固定沒什麼變化","rating": 3.7,"count": 148,"hours": "一至五 11:00-14:00,17:30-19:00 / 六日休","cid": "2435967285372492914"},{"name": "三本手工拉麵（素食）","type": "素食拉麵","kind": "food","cat": "restaurant","min": 6,"dist": 335,"price": "$$","cost": "約 200–400 元","addr": "建國北路二段26號","review": "少見的素食日式拉麵，番茄湯頭好評、份量大；平日雙人商業套餐777元CP值高","rating": 4.7,"count": 2728,"hours": "每日 11:30-14:00,17:00-20:00","cid": "4401087057368707510"},{"name": "梁記嘉義雞肉飯","type": "雞肉飯","kind": "food","cat": "stall","min": 7,"dist": 352,"price": "$","cost": "約 200 元以內","addr": "松江路90巷19號","review": "雞肉飯香、不油膩，加半熟蛋經典；內用必點套餐120元(飯+3小菜+蛋)，男生可能吃不飽；常排隊，晚去小菜會賣完","rating": 3.9,"count": 5455,"hours": "一至五 10:00-14:30,16:30-20:00 / 六日休","cid": "2909521482257962438"},{"name": "店小二池上便當","type": "池上便當","kind": "food","cat": "bento","min": 7,"dist": 350,"price": "$","cost": "約 200 元以內","addr": "長春路131號1樓","review": "老字號便當店，炸物現炸，脆皮燒肉和雞腿好評；排骨被嫌薄；衛生有負評","rating": 3.9,"count": 240,"hours": "一至六 10:30-20:00（中午與晚上）/ 日休","cid": "2294146318099029473"},{"name": "他家私廚","type": "越南牛肉河粉","kind": "food","cat": "restaurant","min": 7,"dist": 362,"price": "$$","cost": "約 200–400 元","addr": "建國北路一段142號","review": "多種牛肉部位的河粉，蟹餅法包、越式咖啡好評；東西好吃但服務和環境被吐槽","rating": 4.1,"count": 222,"hours": "一至五 11:30-14:00,17:00-20:00 / 六日休","cid": "8125259302153415170"},{"name": "麵屋輝 台北店","type": "日式拉麵・沾麵","kind": "food","cat": "restaurant","min": 7,"dist": 373,"price": "$$","cost": "約 200–400 元","addr": "伊通街8-1號","review": "沾麵醬汁濃郁、麵條Q彈，叉燒給兩大片；店內冷氣不太涼","rating": 4.1,"count": 2410,"hours": "一至五 11:30-14:00,17:30-21:00 / 六 12:00-14:00,17:30-21:00 / 日休","cid": "5749530174484126382"},{"name": "芝生食堂 南京松江店","type": "日式定食","kind": "food","cat": "restaurant","min": 7,"dist": 401,"price": "$$","cost": "約 200–400 元","addr": "南京東路二段34號1樓","review": "四菜一湯定食真材實料、清爽無負擔，山藥雞肉丸受推薦；加購飲料半價","rating": 4.4,"count": 64,"hours": "每日 11:30-21:30","cid": "11317400032670630708"},{"name": "阿娥水餃","type": "水餃","kind": "food","cat": "stall","min": 8,"dist": 433,"price": "$","cost": "約 200 元以內","addr": "南京東路二段21巷9號","review": "蝦仁水餃一顆7元大顆多汁、口味清淡；酸辣湯料多被比鼎泰豐；翻桌快，12點後上班族多；牛肉麵也熱門很快賣完","rating": 4.3,"count": 2980,"hours": "一至五 11:30-19:00 / 六日休","cid": "8412587890853079888"},{"name": "九記何燒臘","type": "燒臘便當","kind": "food","cat": "bento","min": 8,"dist": 415,"price": "$","cost": "約 200 元以內","addr": "吉林路124號","review": "重新裝潢後環境乾淨、名店格局；烤鴨最快賣完，晚上有脆皮燒肉；內用外帶都要排隊；也有人嫌肉切太厚偏硬、招牌160不值","rating": 3.9,"count": 1124,"hours": "每日 11:00-14:00,17:00-19:45","cid": "6122036717615208515"},{"name": "咪咪笑餐盒 Lunch Box","type": "雞胸健康餐盒","kind": "food","cat": "bento","min": 8,"dist": 424,"price": "$","cost": "約 200 元以內","addr": "吉林路126號","review": "油蔥雞胸大塊又嫩、配菜多營養均衡，味噌口味也推；乾淨划算","rating": 4.7,"count": 62,"hours": "一至五 11:00-14:00 / 六 11:00-13:30 / 日休","cid": "4728249545210945107"},{"name": "東引小吃 吉林店","type": "麵食・滷味","kind": "food","cat": "stall","min": 8,"dist": 438,"price": "$","cost": "約 200 元以內","addr": "吉林路22巷19號","review": "豬油乾麵香、滷味入味，紅油抄手物美價廉；環境整潔","rating": 3.8,"count": 222,"hours": "一至五 11:00-14:30,17:00-21:00 / 六 11:00-14:30 / 日休","cid": "11525531117512911240"},{"name": "Peeta x TakeTake 健康外送餐 長安店","type": "健康餐盒","kind": "food","cat": "bento","min": 8,"dist": 449,"price": "$$","cost": "約 200–400 元","addr": "長安東路二段35巷1號","review": "雞肉不柴、Peeta 辣醬推薦，會看備註；配菜是冷凍蔬菜、不加醬會淡","rating": 4.0,"count": 758,"hours": "每日 11:00-14:00,15:30-19:00","cid": "10863423725925505251"},{"name": "吉利餐盒店","type": "家庭式便當","kind": "food","cat": "bento","min": 8,"dist": 450,"price": "$","cost": "約 200 元以內","addr": "南京東路二段21巷32號","review": "招牌便當100元一堆肉一堆菜CP值高，烤雞腿香腸便當不錯；晚去菜會冷","rating": 4.0,"count": 79,"hours": "一至五 10:30-14:00,16:30-19:30 / 六 11:00-14:00 / 日休","cid": "14604443343227732318"},{"name": "好想見麵 長安店","type": "麻醬麵・麵食","kind": "food","cat": "stall","min": 9,"dist": 462,"price": "$","cost": "約 200 元以內","addr": "長安東路二段47-1號","review": "麻醬麵香氣足、稠度剛好，麵條Q彈；空間寬敞，十二點後很快坐滿","rating": 4.0,"count": 684,"hours": "每日 11:00-20:00","cid": "11674134496477083042"},{"name": "安盒職人餐盒","type": "中式便當","kind": "food","cat": "bento","min": 9,"dist": 489,"price": "$","cost": "約 200 元以內","addr": "長安東路二段129巷13號","review": "嫩雞便當好吃、荷包蛋煎得好，配菜會更換；配菜稍油；店員親切","rating": 4.9,"count": 35,"hours": "一至五 10:30-14:00,16:00-19:00 / 六日休","cid": "1894432837674891199"},{"name": "小女子正宗越式料理","type": "越南料理","kind": "food","cat": "stall","min": 9,"dist": 489,"price": "$","cost": "約 200 元以內","addr": "長安東路二段129巷11號","review": "越南老闆，咖哩河粉、牛肉炒飯好吃，法國麵包酥脆；品項多","rating": 4.3,"count": 34,"hours": "一至六 10:30-20:00 / 日休","cid": "17819498872344401809"},{"name": "山鶏王","type": "雞肉・醉雞便當","kind": "food","cat": "bento","min": 9,"dist": 494,"price": "$","cost": "約 200 元以內","addr": "吉林路103號","review": "雞肉便當和醉雞便當120元附四樣菜，下午不休息開到半夜；雞肉不算嫩","rating": 3.6,"count": 807,"hours": "每日 11:00-03:00","cid": "11223374576447979732"},{"name": "小絨越式河粉","type": "越南河粉","kind": "food","cat": "stall","min": 9,"dist": 509,"price": "$","cost": "約 200 元以內","addr": "長安東路二段129巷4號","review": "老闆夫婦超親切、環境乾淨，牛肉河粉涼拌河粉好吃，滷肉飯大碗；有綠茶可喝","rating": 4.7,"count": 47,"hours": "一至五 10:30-18:00 / 六日休","cid": "7350442887518967745"},{"name": "行天宮無名麵店","type": "古早味麵店","kind": "food","cat": "stall","min": 10,"dist": 557,"price": "$","cost": "約 200 元以內","addr": "松江路204巷42號","review": "一家三口經營的古早味麵店，湯板條45元、油蔥肉燥鹹香；乾淨；店面在住家一樓不起眼","rating": 4.7,"count": 54,"hours": "一至五 10:00-16:00 / 六日休","cid": "9934481021489340957"},{"name": "Dream House coffee","type": "咖哩・咖啡","kind": "food","cat": "restaurant","min": 10,"dist": 561,"price": "$$","cost": "約 200–400 元","addr": "松江路204巷33號1F","review": "牛肋香料咖哩飯320元肉嫩大塊、附冷萃咖啡；蛋沙拉堡也好吃","rating": 4.8,"count": 308,"hours": "一 10:00-19:00 / 二休 / 三四 10:00-20:00 / 五至日 11:00-18:00","cid": "17920506338326206886"},{"name": "大風草 客家便當","type": "客家便當","kind": "food","cat": "bento","min": 11,"dist": 582,"price": "$","cost": "約 200 元以內","addr": "南京東路三段89巷5-2號","review": "招牌便當118元食材特別、出餐快；也有人嫌雞腿排小又乾、口味偏甜","rating": 4.1,"count": 118,"hours": "一至五 11:00-13:30 / 六日休","cid": "4416385946606702292"},{"name": "美濃屋","type": "喜多方拉麵","kind": "food","cat": "restaurant","min": 11,"dist": 595,"price": "$$","cost": "約 200–400 元","addr": "新生北路一段108之1號","review": "清爽醬油拉麵、叉燒軟嫩，老闆用心選蛋；炒青菜大盤，煎餃多汁；店裝簡單放鬆","rating": 4.1,"count": 1328,"hours": "一休 / 二至日 12:00-15:00,17:00-21:00","cid": "6400852634484527209"},{"name": "阿忠越式傳統牛肉河粉 中原店","type": "越南牛肉河粉","kind": "food","cat": "restaurant","min": 11,"dist": 620,"price": "$$","cost": "約 200–400 元","addr": "中原街35號","review": "石鍋牛肉河粉套餐推薦，原味湯頭清爽；炸春捲普通","rating": 4.4,"count": 655,"hours": "每日 11:00-21:00","cid": "16228283612622426690"},{"name": "親親小吃","type": "台灣小吃","kind": "food","cat": "stall","min": 11,"dist": 627,"price": "$","cost": "約 200 元以內","addr": "吉林路168巷27號","review": "乾淨明亮的老字號小吃，道地價格實惠；傍晚早點來避開客滿","rating": 4.5,"count": 104,"hours": "一至五 11:00-15:00,16:30-20:30 / 六日休","cid": "3088722631175533436"},{"name": "啊興阿滷肉飯","type": "滷肉飯・肉羹","kind": "food","cat": "stall","min": 11,"dist": 627,"price": "$","cost": "約 200 元以內","addr": "林森北路133巷74號1樓","review": "條通內小店，滷肉飯小碗30元很黏稠偏甜，髮菜肉羹、排骨酥湯好評；只有10個座位","rating": 4.5,"count": 371,"hours": "每日 11:30-20:00","cid": "9998097511901422065"},{"name": "虹越小館","type": "越南河粉","kind": "food","cat": "stall","min": 11,"dist": 631,"price": "$","cost": "約 200 元以內","addr": "南京東路一段132巷21-1號","review": "生牛肉河粉大碗、湯頭鮮甜，生牛肉片新鮮；炸春捲沒記憶點","rating": 4.2,"count": 324,"hours": "一至五 11:30-14:30,17:00-21:00 / 六休 / 日 11:30-14:30,17:00-21:00","cid": "2638434471136866167"},{"name": "池稻懷舊便當 合江店","type": "懷舊便當","kind": "food","cat": "bento","min": 12,"dist": 665,"price": "$","cost": "約 200 元以內","addr": "合江街15號","review": "懷舊便當80元、整顆滷蛋，CP值高份量足；飯偏黏、配菜調味淡；中午要早點來；有人反映吃到異物","rating": 4.1,"count": 175,"hours": "一至六 10:00-13:30,16:00-19:30 / 日休","cid": "9949136299822478280"},{"name": "汪記雞肉飯","type": "雞肉飯便當","kind": "food","cat": "stall","min": 12,"dist": 642,"price": "$","cost": "約 200 元以內","addr": "合江街10號","review": "雞肉飯便當80元附四樣自選菜超划算，油蔥香重口味；很多上班族外帶","rating": 4.4,"count": 104,"hours": "一至六 10:00-14:30,16:30-20:30 / 日休","cid": "10013479242934828129"},{"name": "巷內台灣小吃 深海鮮魚湯","type": "深海魚・台式小吃","kind": "food","cat": "restaurant","min": 12,"dist": 649,"price": "$$$","cost": "約 400–1000 元","addr": "長安東路一段77巷5號","review": "現流深海魚整尾料理，鮮魚湯不腥、火候好；價格偏高，點魚先問價","rating": 4.1,"count": 465,"hours": "一休 / 二至日 10:30-21:00","cid": "9111501316769002425"},{"name": "日禾町 丼飯專門店","type": "日式丼飯","kind": "food","cat": "restaurant","min": 12,"dist": 649,"price": "$","cost": "約 200 元以內","addr": "松江路226巷10-1號","review": "起司泡菜脆雞丼份量超夠男生，炸腰內肉多汁；味噌湯自助續；環境不擠","rating": 4.7,"count": 205,"hours": "一至五 11:00-14:00,16:30-20:30 / 六休 / 日 11:00-15:00,17:00-20:30","cid": "2888496923691457866"},{"name": "九湯屋日本拉麵 南京店","type": "日式拉麵","kind": "food","cat": "restaurant","min": 12,"dist": 658,"price": "$","cost": "約 200 元以內","addr": "南京東路一段132巷33號","review": "湯頭選擇多、可選粗細麵，價格親民份量大；營業到凌晨","rating": 4.1,"count": 540,"hours": "每日 10:30-14:30,16:45-04:00","cid": "5835606722213049325"},{"name": "金獅取水 Cafe And Brunch","type": "湯咖哩・早午餐","kind": "food","cat": "restaurant","min": 12,"dist": 661,"price": "$$","cost": "約 200–400 元","addr": "民生東路二段151號1F","review": "咖哩漢堡排、唐揚雞湯咖哩好吃，咖哩醬可加；鬆餅份量大；中午常客滿建議訂位","rating": 4.3,"count": 578,"hours": "一至五 11:00-17:00 / 六日休","cid": "9565263066050082012"},{"name": "毳食堂","type": "日式丼飯","kind": "food","cat": "restaurant","min": 12,"dist": 667,"price": "$","cost": "約 200 元以內","addr": "中原街45號","review": "炸豬排丼酥脆、醬汁滑蛋足，唐揚雞丼大塊；便宜飯量大，加39元有套餐","rating": 4.7,"count": 138,"hours": "一二四至日 11:00-22:00 / 三休","cid": "15577601432505229737"},{"name": "金仙蝦捲魯肉飯","type": "排骨・蝦捲便當","kind": "food","cat": "bento","min": 12,"dist": 669,"price": "$","cost": "約 200 元以內","addr": "松江路226巷20號","review": "不裹粉的炸排骨有肉感，排骨飯附蝦捲；中午外帶人多，內用甜湯無限喝","rating": 4.0,"count": 216,"hours": "一至五 11:00-19:00 / 六日休","cid": "8175802857854895054"},{"name": "許雪莉泰國時尚餐廳","type": "泰式料理","kind": "food","cat": "restaurant","min": 12,"dist": 674,"price": "$$$","cost": "約 600–1400 元","addr": "新生北路一段66號1樓","review": "裝潢像餐酒館的泰式餐廳，金錢蝦餅、香茅雞翅好評，服務到位；價位高適合聚餐","rating": 4.7,"count": 2365,"hours": "一休 / 二至日 11:30-15:00,17:30-22:30（五六晚到01:00）","cid": "9321382963200395676"},{"name": "北門鯓丼","type": "海鮮丼","kind": "food","cat": "restaurant","min": 12,"dist": 677,"price": "$$","cost": "約 200–400 元","addr": "民生東路二段115巷11號","review": "新開的海鮮丼，生魚片蝦新鮮，味噌湯給超多魚肉；極之海鮮丼480元；老闆親切","rating": 4.9,"count": 33,"hours": "一至六 11:30-14:00,17:00-20:30 / 日休","cid": "6432628787583714696"},{"name": "金賢炒飯炒麵專門店","type": "炒飯・炒麵","kind": "food","cat": "stall","min": 12,"dist": 678,"price": "$","cost": "約 200 元以內","addr": "合江街21號","review": "蝦仁炒麵料多菜多、蛤仔湯大顆；也有出錯和異物的負評","rating": 3.6,"count": 396,"hours": "一至六 11:00-14:30,17:00-21:00 / 日休","cid": "15791582406120241957"},{"name": "玉越南美食館","type": "越南河粉","kind": "food","cat": "stall","min": 12,"dist": 683,"price": "$","cost": "約 200 元以內","addr": "興安街42號","review": "大骨湯很香、份量大，生牛清湯河粉和豬排好吃；生牛肉片偏少","rating": 4.7,"count": 298,"hours": "一至五 11:00-14:30,17:00-20:30 / 六休 / 日 11:00-14:00,17:00-20:00","cid": "4517667006664655729"},{"name": "家呷 HOME NOODLES","type": "日式拌麵","kind": "food","cat": "stall","min": 12,"dist": 692,"price": "$","cost": "約 200 元以內","addr": "興安街44-1號","review": "溫馨小店，炸雞拌麵雞腿Q彈，滷豆腐蘿蔔清淡；份量適合女生","rating": 4.6,"count": 165,"hours": "一至五 11:00-20:00 / 六休 / 日 11:30-20:00","cid": "15560048637697240249"},{"name": "厝角","type": "家常定食","kind": "food","cat": "stall","min": 13,"dist": 717,"price": "$","cost": "約 200 元以內","addr": "松江路235巷31號","review": "每天固定一道主菜，四菜一湯午餐150元，健康不油膩，小魚辣椒好吃；只有14個位子，晚來會賣完；男生可能不夠","rating": 4.5,"count": 193,"hours": "一至五 11:00-14:00,17:00-19:30 / 六日休","cid": "16059386691290041959"},{"name": "佳佳小吃店","type": "台式快炒","kind": "food","cat": "restaurant","min": 13,"dist": 719,"price": "$$$","cost": "約 400–600 元","addr": "林森北路67巷121號","review": "平價老派台菜快炒，客家小炒、白斬雞、蛤蜊好評，CP值高；有外帶便當；尖峰建議訂位；白飯另計","rating": 4.4,"count": 585,"hours": "二至六 11:30-14:00,17:30-20:30 / 日一休","cid": "14686069687200035865"},{"name": "新生麵店","type": "傳統麵店","kind": "food","cat": "stall","min": 13,"dist": 693,"price": "$","cost": "約 200 元以內","addr": "新生北路一段11-7號1樓","review": "開 50 多年的麵店，黑豬肉自製餛飩、滷豬腳，老闆娘親切；也有人覺得普通","rating": 4.2,"count": 42,"hours": "一至五 07:00-14:30 / 六日休","cid": "16216841833072651934"},{"name": "東館牛麵食館","type": "牛肉麵","kind": "food","cat": "restaurant","min": 13,"dist": 694,"price": "$$","cost": "約 200–400 元","addr": "南京東路三段109巷15號","review": "紅燒比清燉好吃，半筋半肉燉得夠爛，有酸菜可加；湯稍鹹，空間寬敞","rating": 4.4,"count": 1189,"hours": "每日 11:30-15:00,17:00-20:00","cid": "12586457142939858957"},{"name": "吳記美食","type": "麵食小吃","kind": "food","cat": "stall","min": 13,"dist": 695,"price": "$","cost": "約 200 元以內","addr": "合江街35號1樓","review": "銅板庶民小吃，餛飩乾麵、嘴邊肉湯、腿庫飯不油膩，CP值高","rating": 4.2,"count": 55,"hours": "一至六 11:00-14:30,17:30-20:00 / 日休","cid": "3437278066771193168"},{"name": "六條家庭小吃","type": "熱炒・炒飯","kind": "food","cat": "stall","min": 13,"dist": 696,"price": "$","cost": "約 200 元以內","addr": "林森北路107巷53號","review": "500碗推薦，蝦仁炒飯、羊肉炒飯鑊氣十足，客家板條Q；座位少","rating": 4.1,"count": 223,"hours": "一至六 11:00-22:30 / 日休","cid": "9907824002779219342"},{"name": "米家花雞 會議便當","type": "商務便當","kind": "food","cat": "bento","min": 13,"dist": 718,"price": "$","cost": "約 200 元以內","addr": "林森北路67巷123號1樓","review": "會議便當專門店，油蔥舒肥雞胸、川燙為主比較健康，附小甜點；只開到中午","rating": 4.2,"count": 191,"hours": "一至五 07:00-13:00 / 六日休","cid": "4030327879531830161"},{"name": "條通快餐小吃","type": "牛腩飯・快餐","kind": "food","cat": "stall","min": 13,"dist": 722,"price": "$","cost": "約 200 元以內","addr": "長安東路一段53巷24號","review": "紅燒牛腩入口即化、麵Q，焢肉飯不錯，份量大又便宜；肉圓有古早味","rating": 4.0,"count": 61,"hours": "一至六 11:30-23:30 / 日休","cid": "16381961198658584998"},{"name": "沖繩食堂島彩","type": "沖繩料理定食","kind": "food","cat": "restaurant","min": 13,"dist": 744,"price": "$$","cost": "約 200–400 元","addr": "新生北路二段58巷28號","review": "沖繩麵骨肉分離、塔可飯好吃，咖哩烏龍受推薦；很日本味的小店","rating": 4.5,"count": 274,"hours": "一至五 11:00-15:00,18:00-22:00 / 六日 11:00-15:00,17:00-22:00","cid": "14206777763566583440"},{"name": "小芬越南美食","type": "越南河粉","kind": "food","cat": "stall","min": 13,"dist": 745,"price": "$","cost": "約 200 元以內","addr": "吉林路161巷3-1號","review": "清甜蔬菜牛骨湯頭吃完不口渴，生牛肉新鮮，出餐超快；酸辣牛肉河粉偏辣","rating": 4.7,"count": 115,"hours": "每日 11:00-00:00","cid": "4084050554080179705"},{"name": "中日飯包","type": "鐵板便當","kind": "food","cat": "bento","min": 13,"dist": 746,"price": "$","cost": "約 200 元以內","addr": "長安東路一段46-2號","review": "師傅鐵板現炒的便當120元，蔥爆牛肉加半熟蛋大推，配菜任選三樣，肉量多","rating": 4.3,"count": 366,"hours": "一至五 11:00-14:30,16:00-20:30 / 六日休","cid": "7947506166061073526"},{"name": "蔚稻食堂","type": "日式炒飯・豬排","kind": "food","cat": "restaurant","min": 13,"dist": 748,"price": "$$","cost": "約 200–400 元","addr": "民生東路二段115巷25弄2號","review": "開六年的名店，青醬豬排炒飯粒粒分明有鑊氣；週末常排隊，環境乾淨","rating": 4.6,"count": 1638,"hours": "每日 11:30-14:00,17:30-20:00","cid": "10401403397520423164"},{"name": "金奇日式手工漢堡排","type": "日式漢堡排","kind": "food","cat": "restaurant","min": 14,"dist": 759,"price": "$$","cost": "約 200–400 元","addr": "林森北路85巷43號","review": "日本職人老闆，漢堡排嫩又多汁、多蜜醬有飯店水準，白飯像在日本吃到的一樣好吃","rating": 4.7,"count": 215,"hours": "一休 / 二 17:30-21:00 / 三至日 11:30-14:00,17:30-21:00","cid": "17995914235174398773"},{"name": "味僧梁面小館 錦州店","type": "涼麵・味噌湯・麻辣臭豆腐","kind": "food","cat": "stall","min": 14,"dist": 764,"price": "$","cost": "約 200 元以內","addr": "民生東路二段147巷8號","review": "老四川麻辣涼麵夠味，麻辣鴨血臭豆腐份量大；有衛生方面的嚴重負評","rating": 4.2,"count": 179,"hours": "一至五 07:00-20:00 / 六日休","cid": "13577210111406127169"},{"name": "日好熟成咖哩","type": "日式咖哩","kind": "food","cat": "stall","min": 14,"dist": 769,"price": "$","cost": "約 200 元以內","addr": "合江街74號","review": "咖哩超香、份量足，燉牛肋和豬排推薦；老闆友善，被款待的感覺","rating": 4.9,"count": 51,"hours": "一至五 11:30-14:30,17:00-20:00 / 六 11:30-14:30 / 日休","cid": "11990390253420867293"},{"name": "大鼎豬血湯專門店","type": "豬血湯・滷肉飯","kind": "food","cat": "stall","min": 14,"dist": 771,"price": "$","cost": "約 200 元以內","addr": "龍江路164號","review": "豬血湯超嫩可加湯，大腸滷得軟嫩，醬料台豐富；腿庫控肉雙拼90元份量偏小","rating": 3.9,"count": 1020,"hours": "一至五日 10:30-20:30（四 09:00 開）/ 六休","cid": "14556548028702690841"},{"name": "塩琉 林森店","type": "海鮮拉麵","kind": "food","cat": "restaurant","min": 14,"dist": 773,"price": "$$","cost": "約 200–400 元","addr": "林森北路133巷7號","review": "龍蝦干貝清湯拉麵鮮甜不腥，濃湯海鮮拉麵可免費加麵，叉燒飯必點","rating": 4.5,"count": 466,"hours": "一至六 11:30-14:00,17:00-23:00 / 日休","cid": "12022767311126530454"},{"name": "咕嚕咕嚕小吃店","type": "肉羹・小吃","kind": "food","cat": "stall","min": 14,"dist": 776,"price": "$","cost": "約 200 元以內","addr": "林森北路261-4號","review": "開十多年的老店，肉羹麵、腿庫好評；也有人嫌控肉飯100元偏貴偏乾","rating": 3.7,"count": 235,"hours": "一至五 10:30-20:30 / 六日休","cid": "4982883054013416817"},{"name": "鬍鬚張魯肉飯 吉林店","type": "魯肉飯・雞腿飯","kind": "food","cat": "bento","min": 14,"dist": 776,"price": "$$","cost": "約 200–400 元","addr": "吉林路220號","review": "熟悉的台灣連鎖味道，雞滷飯、排骨；評論說偏鹹、環境油膩","rating": 3.6,"count": 526,"hours": "每日 10:30-21:00","cid": "15908738228476194127"},{"name": "張 三代肉焿滷肉飯","type": "肉羹・滷肉飯","kind": "food","cat": "stall","min": 14,"dist": 783,"price": "$","cost": "約 200 元以內","addr": "合江街88號","review": "高CP值，肉羹湯不稠沒負擔、乾米粉超好吃，滷蛋滷豆腐入味","rating": 4.3,"count": 65,"hours": "一至六 11:00-20:00 / 日休","cid": "17557170637173993419"},{"name": "詠昌牛腱心麵","type": "牛腱心麵","kind": "food","cat": "restaurant","min": 14,"dist": 783,"price": "$$","cost": "約 200–400 元","addr": "中原街54號","review": "紅燒牛腱心麵燉得剛好、麵條好，小菜加熱；12點後客滿但翻桌快，價位偏高","rating": 4.5,"count": 405,"hours": "一至六 11:00-15:00,16:30-19:00 / 日休","cid": "9699015478879792475"},{"name": "廟口小吃","type": "台式小吃","kind": "food","cat": "stall","min": 14,"dist": 785,"price": "$$","cost": "約 200–400 元","addr": "新生北路二段62巷32號","review": "有水準的平價台式小吃，店員親切，餐後有水果；座位在騎樓會有蚊子","rating": 4.3,"count": 384,"hours": "一至六 11:00-20:30 / 日休","cid": "1448519568378905236"},{"name": "金好呷 土雞便當","type": "煙燻土雞便當","kind": "food","cat": "bento","min": 14,"dist": 789,"price": "$","cost": "約 200 元以內","addr": "長安東路一段55之3號1樓","review": "煙燻土雞便當加蔥加辣是靈魂，雞湯濃郁；雞腿飯125元有人嫌料少","rating": 4.0,"count": 265,"hours": "一至五 11:00-21:00 / 六日休","cid": "6296604821458411540"},{"name": "大戶屋 行天宮站店","type": "日式定食","kind": "food","cat": "restaurant","min": 14,"dist": 798,"price": "$$","cost": "約 200–400 元","addr": "松江路276號2樓","review": "連鎖日式定食，食材新鮮、白飯味噌湯可續，松阪豬定食推；加一成服務費，約350–400元","rating": 4.2,"count": 1051,"hours": "一至五 11:00-15:00,17:00-22:00 / 六日 11:00-22:00","cid": "7480074005549099228"},{"name": "超商飲料","type": "冷藏飲料・咖啡","kind": "drink","cat": "restaurant","min": 1,"price": "$","cost": "約 25–60 元","addr": "","review": "最近、不用等，集點咖啡也可以。"},{"name": "木衛二 伊通鑄茶所","type": "手搖茶飲","kind": "drink","cat": "restaurant","min": 2,"dist": 112,"price": "$","cost": "約 200 元以內","addr": "伊通街66巷5-1號","review": "包裝好看、地衛一好評；招牌午夜藍鮮奶茶被嫌偏水，近來茶味變淡","rating": 4.2,"count": 1126,"hours": "一至五 11:00-20:00 / 六日 12:00-18:00","cid": "9597398162892793067"},{"name": "花茶大師 四平店","type": "花茶・奶油茶","kind": "drink","cat": "restaurant","min": 3,"dist": 151,"price": "$","cost": "約 200 元以內","addr": "四平街71號","review": "愛爾蘭奶油紅茶是招牌，喜歡伯爵香氣的人會驚艷；無糖時茶偏淡","rating": 4.4,"count": 320,"hours": "一至五 10:00-20:30 / 六 12:00-20:30 / 日休","cid": "15205865427930465974"},{"name": "青山 青茶專業製作 伊通店","type": "青茶・奶蓋","kind": "drink","cat": "restaurant","min": 3,"dist": 157,"price": "$","cost": "約 200 元以內","addr": "伊通街68之2號","review": "紅茶本體香甜好喝；海鹽奶蓋其實偏甜；有人說等很久","rating": 4.2,"count": 350,"hours": "一至五 10:00-20:30 / 六日 11:00-20:30","cid": "10636327050471126616"},{"name": "Coffee Moon 珈琲月","type": "咖啡","kind": "drink","cat": "restaurant","min": 3,"dist": 162,"price": "$","cost": "約 200 元以內","addr": "四平街73號1樓","review": "四平商圈咖啡小店，拿鐵好喝，水果咖啡選擇多","rating": 4.5,"count": 676,"hours": "一至五 07:30-17:00 / 六日 10:30-17:30","cid": "6694077597575382622"},{"name": "PARC CAFE 泊咖啡","type": "咖啡","kind": "drink","cat": "restaurant","min": 3,"dist": 163,"price": "$","cost": "約 200 元以內","addr": "一江街25號","review": "價格便宜但豆子優秀，卡布奇諾奶泡綿密，可換燕麥奶；店狗哈士奇很可愛","rating": 4.7,"count": 251,"hours": "一至五 09:00-18:00 / 六日休","cid": "7580330481697083752"},{"name": "發發 伊通牧場","type": "優格冰沙","kind": "drink","cat": "restaurant","min": 4,"dist": 181,"price": "$","cost": "約 200 元以內","addr": "伊通街75號","review": "莓果派對優格95元真材實料吃得到果肉，不甜膩；鴨嘴獸杯很可愛","rating": 4.4,"count": 914,"hours": "一至五 10:00-21:00 / 六日 11:00-20:00","cid": "10426199150986345409"},{"name": "有飲 台北伊通店","type": "手搖茶飲","kind": "drink","cat": "restaurant","min": 4,"dist": 191,"price": "$","cost": "約 200 元以內","addr": "伊通街97號","review": "椪糖紅茶系列古早味甜，常有聯名活動；店員親切","rating": 3.9,"count": 410,"hours": "一至五 10:00-19:30 / 六日 11:00-19:30","cid": "9995675744893461390"},{"name": "here work&coffee 南京松江店","type": "咖啡・工作空間","kind": "drink","cat": "restaurant","min": 4,"dist": 202,"price": "$$","cost": "約 200–400 元","addr": "松江路97巷21號","review": "三層樓的工作咖啡空間，有躺椅和電話亭，安靜適合專注","rating": 4.4,"count": 34,"hours": "一至六 07:00-02:00 / 日 07:00-22:00","cid": "791430142713077301"},{"name": "Piccolo Angolo 角落咖啡館","type": "精品咖啡","kind": "drink","cat": "restaurant","min": 4,"dist": 210,"price": "$$","cost": "約 200–400 元","addr": "松江路124巷19-1號","review": "手沖咖啡香氣驚艷，提拉米蘇有海鹽層次，芝麻歐蕾、香料奶茶有特色","rating": 4.5,"count": 1197,"hours": "一休 / 二至五 08:00-18:00 / 六日 09:00-18:00","cid": "5461888668166610766"},{"name": "麻古茶坊 松江南京店","type": "手搖茶飲","kind": "drink","cat": "restaurant","min": 5,"dist": 253,"price": "$","cost": "","addr": "南京東路二段192號","review": "芝芝金萱雙Q、紅萱雙Q是常點；店員貼心；但有人反映水果不新鮮、奶蓋室溫保存喝完拉肚子","rating": 4.1,"count": 253,"hours": "一至五 10:00-20:00 / 六 11:00-20:00 / 日 11:00-19:30","cid": "15365878789082258641"},{"name": "客美多咖啡 南京建國店","type": "咖啡・輕食","kind": "drink","cat": "restaurant","min": 5,"dist": 275,"price": "$$","cost": "約 200–400 元","addr": "南京東路二段204號","review": "環境舒適座位寬、不限時；吐司份量有誠意、炸物不油；收服務費；最近有寶可夢聯名","rating": 4.2,"count": 2985,"hours": "每日 07:30-21:00","cid": "7789385217855132382"},{"name": "金五春職人茶飲 伊通店","type": "台灣茶涼茶","kind": "drink","cat": "restaurant","min": 5,"dist": 235,"price": "$","cost": "","addr": "伊通街112-1號","review": "無糖涼茶加桂花凍大推、用台灣茶；檸檬旺來桂花烏龍清爽；草本茶的枸杞近來品質不穩","rating": 4.8,"count": 1472,"hours": "一至五 11:00-20:00 / 六 12:00-19:00 / 日休","cid": "2524379071032011612"},{"name": "序序茶 台北伊通店","type": "手搖茶飲","kind": "drink","cat": "restaurant","min": 5,"dist": 266,"price": "$","cost": "約 200 元以內","addr": "伊通街131號","review": "可試喝；茶花紅烏龍奶茶75元、海鹽奶蓋蘋果滴金好評；也有人覺得拿鐵和王那堤偏水","rating": 3.9,"count": 75,"hours": "一至五 10:00-21:00 / 六 11:00-21:00 / 日 11:30-19:00","cid": "147506402186891835"},{"name": "弄宅咖啡 Alleyhouse（預約制）","type": "老宅咖啡","kind": "drink","cat": "restaurant","min": 5,"dist": 247,"price": "$$","cost": "約 200–400 元","addr": "松江路150巷18-1號","review": "百年老宅改建的京都風咖啡館，酒粕布丁是招牌；要預約、入內脫鞋，下午才開","rating": 4.9,"count": 664,"hours": "一至四 13:00-20:00 / 五六 13:00-21:00 / 日 13:00-20:00","cid": "10418556068886742416"},{"name": "龜記茗品 台北伊通店","type": "手搖茶飲","kind": "drink","cat": "restaurant","min": 5,"dist": 256,"price": "$","cost": "約 200 元以內","addr": "伊通街127-3號","review": "葡萄蘆薈春清爽；換人經營後飲品正常；偶有服務態度負評","rating": 4.1,"count": 568,"hours": "每日 10:00-21:00","cid": "12499548267269132587"},{"name": "一沐日 吉林南京店","type": "手搖茶飲","kind": "drink","cat": "restaurant","min": 6,"dist": 345,"price": "$","cost": "約 200 元以內","addr": "南京東路二段56號","review": "粉粿黑糖鮮奶茶85元是招牌，有叫號螢幕；尖峰出杯慢、偶有做錯","rating": 3.6,"count": 627,"hours": "每日 10:00-21:00","cid": "7902364022092742743"},{"name": "TWATUTIAN Coffee & Co.","type": "咖啡・三明治","kind": "drink","cat": "restaurant","min": 7,"dist": 376,"price": "$$","cost": "約 200–400 元","addr": "建國北路一段136號","review": "兩層樓採光好，雞肉三明治、煙燻牛肉三明治大推；插座少、人多時吵","rating": 4.5,"count": 331,"hours": "一至五 08:00-18:00 / 六日 09:00-18:30","cid": "9528498499009482270"},{"name": "滿上仙草茶飲 松江店","type": "仙草茶飲","kind": "drink","cat": "restaurant","min": 8,"dist": 429,"price": "$","cost": "約 200 元以內","addr": "松江路58號","review": "仙草凍奶茶、百年仙草凍飲濃厚古早味回甘；泰沖凍偏甜不能調；有人喝到愛玉怪味","rating": 3.9,"count": 422,"hours": "一至五 10:00-21:00 / 六日 10:00-18:00","cid": "13307118954898043999"},{"name": "See You Tomorrow Coffee","type": "手沖咖啡","kind": "drink","cat": "restaurant","min": 8,"dist": 430,"price": "$$","cost": "約 200–400 元","addr": "松江路170巷11號1樓","review": "手沖專門店，有日本豆子，甜點好吃、氣氛愜意；也有人覺得特調偏水","rating": 4.7,"count": 193,"hours": "每日 12:00-18:00","cid": "7256883227743514143"},{"name": "小皮咖啡 Cafe PIPI","type": "咖啡","kind": "drink","cat": "restaurant","min": 8,"dist": 447,"price": "$","cost": "約 200 元以內","addr": "南京東路二段24巷8號","review": "美式莊園咖啡55元起、價格偏低但香醇，百香美式很亮眼；座位少","rating": 4.9,"count": 137,"hours": "一至五 07:00-16:00 / 六 08:00-13:00 / 日休","cid": "2172916264535208466"},{"name": "某咖啡 Mau Coffee","type": "創意咖啡","kind": "drink","cat": "restaurant","min": 10,"dist": 535,"price": "$$","cost": "約 200–400 元","addr": "松江路209號1樓","review": "藏在國家書店角落，創意咖啡如玫瑰荔枝奶油冰咖啡；座位少","rating": 4.6,"count": 492,"hours": "一至五 10:00-19:30 / 六 10:00-19:00 / 日休","cid": "14393665215577412030"},{"name": "D23 Coffee Roasters","type": "咖啡","kind": "drink","cat": "restaurant","min": 10,"dist": 539,"price": "$$","cost": "約 200–400 元","addr": "建國北路二段63號1樓","review": "髒髒 Dirty 濃郁過癮；店很小、沒廁所，不適合久坐","rating": 4.6,"count": 268,"hours": "一至五 09:00-17:00 / 六日 09:30-17:30","cid": "1323907420972419952"},{"name": "kikumo","type": "咖啡","kind": "drink","cat": "restaurant","min": 10,"dist": 539,"price": "$","cost": "約 200 元以內","addr": "中原街4號","review": "大落地窗的小店，髒髒表現好、價格合理；以外帶為主","rating": 4.8,"count": 297,"hours": "一至五 08:00-16:45 / 六日 10:00-16:45","cid": "4249886933373474645"},{"name": "Old rattan coffee 荖藤咖啡","type": "自家烘焙咖啡","kind": "drink","cat": "restaurant","min": 12,"dist": 641,"price": "$","cost": "約 200 元以內","addr": "民生東路二段115巷3號","review": "自烘單品豆選擇多，座位有插座，低消一杯限兩小時；輕食甜點用心","rating": 4.5,"count": 427,"hours": "一 09:30-18:30 / 二至四 08:00-18:30 / 五 09:30-18:30 / 六日 09:00-18:00","cid": "14096577147973095028"},{"name": "蒔隅咖啡 Leaf&Loop","type": "咖啡・茶","kind": "drink","cat": "restaurant","min": 12,"dist": 648,"price": "$","cost": "約 200 元以內","addr": "合江街14號","review": "蕨類植物和插畫展的可愛小店，焙茶歐蕾、貝果好評，價格實惠、有插座","rating": 5.0,"count": 217,"hours": "一至五 09:30-19:30 / 六日 10:30-18:30","cid": "16551894251636645814"},{"name": "basis coffee.","type": "咖啡・甜點","kind": "drink","cat": "restaurant","min": 12,"dist": 659,"price": "$$","cost": "約 200–400 元","addr": "南京東路三段109巷16號","review": "大窗轉角咖啡，肉桂捲、布丁、伯爵蛋糕好評，飲品有創意；老闆人很好","rating": 4.5,"count": 371,"hours": "一二 11:00-18:00 / 三至日 11:00-23:00","cid": "1823378934557241132"},{"name": "冰果專賣店","type": "傳統冰果・果汁","kind": "drink","cat": "restaurant","min": 12,"dist": 671,"price": "$","cost": "","addr": "中原街47號","review": "北部少見的傳統冰果店，水果冰一大盤才60元，胡蘿蔔汁、四果冰、豆花都便宜","rating": 4.6,"count": 58,"hours": "一至六 09:00-21:00 / 日休","cid": "10582285177244044632"},{"name": "德佈 Debut Cafe 台北店","type": "咖啡・蛋糕","kind": "drink","cat": "restaurant","min": 12,"dist": 673,"price": "$$","cost": "約 200–400 元","addr": "新生北路一段15號","review": "不限時有插座的溫馨咖啡館，巴斯克蛋糕白蘭地流心推薦；也有正餐","rating": 4.6,"count": 1052,"hours": "每日 09:00-19:00","cid": "10770949898295799497"},{"name": "醋頭家 長安南京店","type": "果醋・茶飲","kind": "drink","cat": "restaurant","min": 13,"dist": 702,"price": "$","cost": "約 200 元以內","addr": "長安東路一段53巷17號1樓","review": "營業到深夜，大橙小蜜65元好喝但偏甜；店員親切","rating": 4.1,"count": 131,"hours": "每日 10:00-23:50","cid": "17301089970026133328"},{"name": "Coffee Underwater","type": "精品咖啡","kind": "drink","cat": "restaurant","min": 13,"dist": 704,"price": "$$","cost": "約 200–400 元","addr": "龍江路106巷4號","review": "2024台灣咖啡師冠軍開的店，單品和特調特別，威士忌起司蛋糕、明太子可頌好評","rating": 4.7,"count": 802,"hours": "每日 11:00-18:00","cid": "502318289665918388"},{"name": "COFFIX","type": "咖啡","kind": "drink","cat": "restaurant","min": 13,"dist": 723,"price": "$","cost": "約 200 元以內","addr": "松江路252巷10-1號一樓","review": "美式風格小店，燕麥拿鐵配手工餅乾，適合辦公，老闆好聊","rating": 4.9,"count": 44,"hours": "一至三 09:30-18:00 / 四休 / 五至日 09:30-18:00","cid": "9686247453354343892"},{"name": "KiOSK","type": "咖啡","kind": "drink","cat": "restaurant","min": 13,"dist": 727,"price": "$","cost": "約 200 元以內","addr": "新生北路一段40號","review": "很有靈魂的人氣咖啡館，髒髒、拿鐵、單品都好評，老闆記得每桌客人","rating": 4.4,"count": 1407,"hours": "一 10:00-16:00 / 二休 / 三至日 10:00-16:00","cid": "12895238056313445531"},{"name": "PAI coffee","type": "咖啡・三明治","kind": "drink","cat": "restaurant","min": 14,"dist": 757,"price": "$$","cost": "約 200–400 元","addr": "民生東路二段147巷6弄1號","review": "小巧咖啡館，手沖順口、柳橙咖啡特別，三明治人氣高；店員會分享咖啡知識","rating": 4.8,"count": 624,"hours": "一至五 07:30-18:30 / 六日 10:00-18:00","cid": "12822428970544382916"}];
+// Places the owner asked to drop; also removed from lists already saved on a device.
+const REMOVED = new Set(['京簡康 台北伊通店']);
+const WHEEL_MAX = 12;   // more slices than this and the names stop being readable
+const LIST_PAGE = 30;
+
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage blocked: keep in memory */ } },
+};
+const CATS = { restaurant: '餐廳', bento: '便當餐盒', stall: '小吃攤' };
+// kind: 'food' or 'drink'; cat only matters for food.
+function norm(x) { const { stall, ...rest } = x; return { kind: 'food', cat: stall ? 'stall' : 'restaurant', price: '$$', ...rest }; }
+function freshDefaults() { return DEFAULTS.map(norm); }
+function loadState() {
+  const cur = store.get(KEY);
+  if (cur && Array.isArray(cur.items)) return { ...cur, items: cur.items.filter(x => !REMOVED.has(x.name)).map(norm) };
+  const items = freshDefaults();
+  for (const k of OLD_KEYS) {
+    const old = store.get(k);
+    if (!old || !Array.isArray(old.items)) continue;
+    // Keep restaurants the viewer added themselves; the rest now comes from Google data.
+    const skip = new Set([...OLD_DEFAULT_NAMES, ...items.map(x => x.name)]);
+    old.items.filter(x => !skip.has(x.name)).forEach(x => items.push(norm(x)));
+    return { ...old, items };
+  }
+  return { items };
+}
+const saved = loadState();
+let items = saved.items;
+let range = [5, 10, 15].includes(saved.range) ? saved.range : 5;
+let priceOn = Array.isArray(saved.priceOn) && saved.priceOn.length ? saved.priceOn : ['$', '$$', '$$$'];
+let catOn = Array.isArray(saved.catOn) && saved.catOn.length ? saved.catOn : Object.keys(CATS);
+let mode = saved.mode === 'drink' ? 'drink' : 'food';
+
+const $ = id => document.getElementById(id);
+const canvas = $('wheel'), ctx = canvas.getContext('2d');
+let rotation = 0, spinning = false, winner = -1, bulbPhase = 0, size = 0, lastTickSlice = null, flashOn = true;
+let wheel = [];          // the slices currently on the wheel, a random sample of pool()
+let listLimit = LIST_PAGE;
+
+function save() { store.set(KEY, { items, range, priceOn, catOn, mode }); }
+function fitsExceptWalk(x) {
+  if (x.kind !== mode) return false;
+  return mode === 'drink' || (priceOn.includes(x.price) && catOn.includes(x.cat));
+}
+function fits(x) { return x.min <= range && fitsExceptWalk(x); }
+function pool() { return items.filter(fits); }
+function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function reroll() { wheel = shuffle(pool()).slice(0, WHEEL_MAX); winner = -1; }
+
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  size = canvas.clientWidth;
+  canvas.width = Math.round(size * dpr); canvas.height = Math.round(size * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  draw();
+}
+
+// Shrink the font before cutting the name, so most names show in full.
+function fitLabel(text, maxW, maxFs) {
+  let fs = maxFs;
+  const font = s => `700 ${s}px "Noto Sans TC", "PingFang TC", sans-serif`;
+  ctx.font = font(fs);
+  while (fs > 12 && ctx.measureText(text).width > maxW) { fs -= 1; ctx.font = font(fs); }
+  if (ctx.measureText(text).width <= maxW) return text;
+  let t = text;
+  while (t.length > 1 && ctx.measureText(t + '…').width > maxW) t = t.slice(0, -1);
+  return t + '…';
+}
+
+function draw() {
+  if (!size) return;
+  const cx = size / 2, cy = size / 2;
+  const rimOuter = size / 2 - 2, rimInner = rimOuter - size * 0.065, R = rimInner - 2;
+  const colors = ['--s1', '--s2', '--s3', '--s4', '--s5', '--s6'].map(css);
+  const surface = css('--surface'), jade = css('--jade'), jadeDeep = css('--jade-deep'), gold = css('--gold');
+  ctx.clearRect(0, 0, size, size);
+
+  const rimGrad = ctx.createRadialGradient(cx, cy, rimInner, cx, cy, rimOuter);
+  rimGrad.addColorStop(0, jadeDeep); rimGrad.addColorStop(.5, jade); rimGrad.addColorStop(1, jadeDeep);
+  ctx.beginPath(); ctx.arc(cx, cy, rimOuter, 0, Math.PI * 2); ctx.fillStyle = rimGrad; ctx.fill();
+
+  if (!wheel.length) {
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fillStyle = css('--line'); ctx.fill();
+    ctx.fillStyle = css('--muted'); ctx.textAlign = 'center'; ctx.font = `500 ${size * .045}px "Noto Sans TC", sans-serif`;
+    ctx.fillText('沒有符合條件的店', cx, cy + size * .22);
+  } else {
+    const seg = Math.PI * 2 / wheel.length;
+    wheel.forEach((it, i) => {
+      const a0 = rotation + i * seg - Math.PI / 2;
+      let c = colors[i % colors.length];
+      if (wheel.length % colors.length === 1 && i === wheel.length - 1) c = colors[2];
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, a0, a0 + seg); ctx.closePath();
+      ctx.fillStyle = c; ctx.fill();
+      const shade = ctx.createRadialGradient(cx, cy, R * .2, cx, cy, R);
+      shade.addColorStop(0, 'rgba(255,255,255,.2)'); shade.addColorStop(.75, 'rgba(255,255,255,0)'); shade.addColorStop(1, 'rgba(0,0,0,.12)');
+      ctx.fillStyle = shade; ctx.fill();
+      if (!spinning && i === winner && flashOn) { ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.fill(); }
+      ctx.strokeStyle = surface; ctx.lineWidth = Math.max(1.5, size * .005); ctx.stroke();
+
+      // Names on the left half are turned around so none read upside down.
+      const mid = a0 + seg / 2, flip = Math.cos(mid) < 0;
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(flip ? mid + Math.PI : mid);
+      ctx.fillStyle = css('--slice-text'); ctx.textAlign = flip ? 'left' : 'right'; ctx.textBaseline = 'middle';
+      const maxFs = Math.max(12, Math.min(size * .048, R * seg * .45));
+      const edge = R - size * .03;
+      ctx.fillText(fitLabel(it.name, R * .6, maxFs), flip ? -edge : edge, 0);
+      ctx.restore();
+    });
+  }
+
+  const bulbs = 24, br = size * .011, rr = (rimOuter + rimInner) / 2;
+  for (let i = 0; i < bulbs; i++) {
+    const a = i / bulbs * Math.PI * 2;
+    const on = spinning ? (i + bulbPhase) % 2 === 0 : true;
+    ctx.beginPath(); ctx.arc(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr, br, 0, Math.PI * 2);
+    ctx.fillStyle = on ? gold : 'rgba(255,255,255,.25)';
+    ctx.shadowColor = on ? gold : 'transparent'; ctx.shadowBlur = on ? br * 2.2 : 0;
+    ctx.fill();
+  }
+  ctx.shadowBlur = 0;
+}
+
+function listRow(it, onWheel) {
+  const li = document.createElement('li');
+  li.className = (fits(it) ? '' : 'off') + (onWheel ? ' on-wheel' : '');
+  const min = document.createElement('span'); min.className = 'min'; min.innerHTML = `${it.min}<small>分鐘</small>`;
+  const info = document.createElement('div');
+  const top = document.createElement('div'); top.className = 'top';
+  const b = document.createElement('b'); b.textContent = it.name;
+  top.append(b);
+  if (it.kind === 'food') { const pr = document.createElement('span'); pr.className = 'p'; pr.textContent = it.price; top.append(pr); }
+  if (it.rating) { const st = document.createElement('span'); st.className = 'st'; st.textContent = `★${it.rating.toFixed(1)}`; top.append(st); }
+  if (it.kind === 'food' && it.cat !== 'restaurant') {
+    const t = document.createElement('span'); t.className = 'tag ' + it.cat; t.textContent = CATS[it.cat]; top.append(t);
+  }
+  if (onWheel) { const t = document.createElement('span'); t.className = 'tag wheel'; t.textContent = '輪盤上'; top.append(t); }
+  const s = document.createElement('span'); s.className = 'sub'; s.textContent = [it.type, it.cost, it.hours].filter(Boolean).join('・');
+  info.append(top, s);
+  const d = document.createElement('details'); const sm = document.createElement('summary');
+  sm.textContent = '評論摘要與地圖'; const p = document.createElement('p'); p.textContent = it.review || '還沒有評論摘要。';
+  const ad = document.createElement('p'); ad.className = 'sub'; ad.textContent = it.addr || '';
+  d.append(sm, p, ad, mapsLink(it, '在 Google 地圖查看', 'gmaps')); info.append(d);
+  const del = document.createElement('button'); del.className = 'del'; del.type = 'button'; del.textContent = '移除';
+  del.setAttribute('aria-label', '移除 ' + it.name);
+  del.onclick = () => { if (spinning) return; items = items.filter(x => x !== it); save(); refresh(true); };
+  li.append(min, info, del);
+  return li;
+}
+
+function renderList() {
+  const q = $('q').value.trim().toLowerCase(), showAll = $('showAll').checked;
+  const onWheel = new Set(wheel);
+  const rows = items.filter(x => x.kind === mode && (showAll || fits(x)))
+    .filter(x => !q || [x.name, x.type, x.addr].join(' ').toLowerCase().includes(q))
+    .sort((a, b) => (onWheel.has(b) - onWheel.has(a)) || a.min - b.min || (b.rating || 0) - (a.rating || 0));
+  const ul = $('list'); ul.innerHTML = '';
+  rows.slice(0, listLimit).forEach(it => ul.append(listRow(it, onWheel.has(it))));
+  $('empty').hidden = rows.length > 0;
+  $('more').hidden = rows.length <= listLimit;
+  $('more').textContent = `再顯示 ${Math.min(LIST_PAGE, rows.length - listLimit)} 家（還有 ${rows.length - listLimit} 家）`;
+
+  const n = pool().length, drink = mode === 'drink';
+  $('count').textContent = `${n} 家符合條件`;
+  $('wheelInfo').innerHTML = n ? `輪盤上 <b>${wheel.length}</b> 家，共 <b>${n}</b> 家符合` : '放寬條件就會有店';
+  $('reroll').disabled = spinning || n <= wheel.length;
+  [5, 10, 15].forEach(r => { $('c' + r).textContent = `${items.filter(x => x.min <= r && fitsExceptWalk(x)).length} 家`; });
+  document.querySelectorAll('.walk-pills button').forEach(btn => btn.setAttribute('aria-pressed', Number(btn.dataset.r) === range));
+  document.querySelectorAll('.price-pills button').forEach(btn => btn.setAttribute('aria-pressed', priceOn.includes(btn.dataset.p)));
+  document.querySelectorAll('.cat-pills button').forEach(btn => btn.setAttribute('aria-pressed', catOn.includes(btn.dataset.c)));
+  document.querySelectorAll('.mode button').forEach(btn => btn.setAttribute('aria-selected', btn.dataset.m === mode));
+  $('rowPrice').hidden = drink; $('rowCat').hidden = drink;
+  $('listTitle').textContent = drink ? '附近的飲料店' : '附近的午餐';
+  $('h1what').textContent = drink ? '喝什麼' : '吃什麼';
+  $('spin').disabled = $('hub').disabled = spinning || !wheel.length;
+}
+// rerollWheel: true when the filters or the list changed, so the wheel must be drawn again from the new pool.
+function refresh(rerollWheel) {
+  if (rerollWheel) { reroll(); listLimit = LIST_PAGE; setReadout('本輪候選', '按下「開始轉」'); }
+  renderList(); draw();
+}
+function setReadout(label, name) { $('roLabel').textContent = label; $('roName').textContent = name; }
+
+function mapsLink(it, text, cls) {
+  const a = document.createElement('a'); a.target = '_blank'; a.rel = 'noopener'; a.className = cls;
+  a.href = it.cid ? 'https://maps.google.com/?cid=' + it.cid
+    : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(it.name + ' ' + (it.addr || '台北市中山區'));
+  a.textContent = text;
+  return a;
+}
+function chip(text, cls) { const c = document.createElement('span'); c.className = 'chip' + (cls ? ' ' + cls : ''); c.textContent = text; return c; }
+
+function fillDetails(it, chipsEl, reviewEl, linksEl) {
+  chipsEl.innerHTML = '';
+  chipsEl.append(chip(`走路約 ${it.min} 分鐘`, 'walk'));
+  if (it.rating) chipsEl.append(chip(`★ ${it.rating.toFixed(1)}（${(it.count || 0).toLocaleString()} 則）`, 'star'));
+  if (it.kind === 'food' && it.cat !== 'restaurant') chipsEl.append(chip(CATS[it.cat], 'stall'));
+  if (it.kind === 'food') chipsEl.append(chip(it.price + (it.cost ? '　' + it.cost : ''), 'price'));
+  if (it.type) chipsEl.append(chip(it.type));
+  reviewEl.textContent = (it.review || '') + (it.hours ? (it.review ? '\n' : '') + '營業時間：' + it.hours : '');
+  reviewEl.hidden = !it.review && !it.hours;
+  linksEl.innerHTML = '';
+  const dir = document.createElement('a'); dir.target = '_blank'; dir.rel = 'noopener'; dir.className = 'btn-link solid';
+  dir.href = 'https://www.google.com/maps/dir/?api=1&travelmode=walking&origin=' + encodeURIComponent(ORIGIN) +
+    '&destination=' + encodeURIComponent(it.name + ' ' + (it.addr || '台北市中山區'));
+  dir.textContent = '走路路線';
+  linksEl.append(dir, mapsLink(it, 'Google 評論', 'btn-link'));
+}
+
+function showResult(it) {
+  $('rLabel').textContent = it.kind === 'drink' ? '上一次轉到的飲料' : '上一次轉到的午餐';
+  $('rName').textContent = it.name; $('rHint').hidden = true;
+  fillDetails(it, $('rChips'), $('rReview'), $('rLinks'));
+  const t = $('ticket'); t.classList.remove('win'); void t.offsetWidth; t.classList.add('win');
+}
+function clearResult() {
+  $('rLabel').textContent = '上一次轉到'; $('rName').textContent = '還沒轉'; $('rHint').hidden = false;
+  $('rHint').textContent = mode === 'drink' ? '選好走路時間，按「開始轉」讓輪盤決定。' : '選好走路時間和預算，按「開始轉」讓輪盤決定。';
+  $('rChips').innerHTML = ''; $('rReview').hidden = true; $('rLinks').innerHTML = '';
+}
+
+// ---- Sound: short clicks while spinning, a small fanfare on the reveal. ----
+let audio = null, muted = false;
+try { muted = localStorage.getItem('nanjing-lunch-muted') === '1'; } catch (e) { /* storage blocked */ }
+function ac() {
+  if (muted) return null;
+  try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
+  if (audio.state === 'suspended') audio.resume();
+  return audio;
+}
+function beep(freq, len, vol, type = 'triangle', when = 0) {
+  const a = ac(); if (!a) return;
+  const t = a.currentTime + when, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + len);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + len + .02);
+}
+function fanfare() { [523, 659, 784, 1047].forEach((f, i) => beep(f, .35, .12, 'triangle', i * .1)); }
+function renderMute() {
+  $('mute').setAttribute('aria-pressed', !muted); $('mute').setAttribute('aria-label', muted ? '音效：關（按一下打開）' : '音效：開（按一下關閉）');
+  $('muteWave').style.display = muted ? 'none' : ''; $('muteX').style.display = muted ? '' : 'none';
+}
+$('mute').onclick = () => {
+  muted = !muted; renderMute();
+  try { localStorage.setItem('nanjing-lunch-muted', muted ? '1' : '0'); } catch (e) { /* storage blocked */ }
+};
+renderMute();
+
+function tick(speed) {
+  const el = $('pointer'); el.classList.remove('tick'); void el.getBoundingClientRect(); el.classList.add('tick');
+  beep(speed > .5 ? 1400 : 900, .03, speed > .5 ? .04 : .09, 'square');
+  if (speed < .5 && navigator.vibrate) { try { navigator.vibrate(8); } catch (e) { /* vibration unsupported */ } }
+}
+
+function confetti() {
+  const c = $('confetti'), x = c.getContext('2d'), dpr = Math.min(window.devicePixelRatio || 1, 2);
+  c.width = innerWidth * dpr; c.height = innerHeight * dpr; x.setTransform(dpr, 0, 0, dpr, 0, 0); c.hidden = false;
+  const cols = ['--s1', '--s2', '--s3', '--s4', '--s5', '--gold', '--accent'].map(css);
+  const bits = Array.from({ length: 140 }, () => ({
+    x: innerWidth / 2, y: innerHeight * .4, vx: (Math.random() - .5) * 14, vy: -Math.random() * 14 - 4,
+    r: Math.random() * Math.PI, vr: (Math.random() - .5) * .4, w: 6 + Math.random() * 6, h: 4 + Math.random() * 6,
+    c: cols[Math.floor(Math.random() * cols.length)],
+  }));
+  const t0 = performance.now();
+  (function fr(now) {
+    x.clearRect(0, 0, innerWidth, innerHeight);
+    bits.forEach(b => { b.vy += .35; b.vx *= .99; b.x += b.vx; b.y += b.vy; b.r += b.vr;
+      x.save(); x.translate(b.x, b.y); x.rotate(b.r); x.fillStyle = b.c; x.fillRect(-b.w / 2, -b.h / 2, b.w, b.h); x.restore(); });
+    if (now - t0 < 2400) requestAnimationFrame(fr); else { x.clearRect(0, 0, innerWidth, innerHeight); c.hidden = true; }
+  })(t0);
+}
+
+// ---- Reveal popup ----
+let lastFocus = null;
+function openReveal(it) {
+  $('mLabel').textContent = it.kind === 'drink' ? '今天就喝這家' : '今天中午就吃這家';
+  $('mName').textContent = it.name;
+  $('mAddr').textContent = it.addr || '';
+  fillDetails(it, $('mChips'), $('mReview'), $('mLinks'));
+  lastFocus = document.activeElement;
+  $('reveal').hidden = false; document.body.classList.add('modal-open');
+  requestAnimationFrame(() => requestAnimationFrame(() => $('reveal').classList.add('show')));
+  $('mOk').focus({ preventScroll: true });
+}
+function closeReveal() {
+  $('reveal').classList.remove('show'); $('reveal').hidden = true; document.body.classList.remove('modal-open');
+  if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
+}
+$('mOk').onclick = closeReveal;
+$('mAgain').onclick = () => { closeReveal(); refresh(true); spin(); };
+$('reveal').addEventListener('click', e => { if (e.target === $('reveal')) closeReveal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('reveal').hidden) closeReveal(); });
+
+// About 6 seconds at a pace you can follow (top speed about 1.3 turns a second): ease out past the winner, then creep back onto it.
+function spin() {
+  if (spinning || !wheel.length) return;
+  const p = wheel;
+  spinning = true; winner = -1; $('stage').classList.add('live'); renderList();
+  ac();
+  const pick = Math.floor(Math.random() * p.length), seg = Math.PI * 2 / p.length, full = Math.PI * 2;
+  // Pointer is at the top; slice i covers rotation + [i, i + 1) * seg.
+  const target = -(pick + .5) * seg + (Math.random() * .4 - .3) * seg;
+  const current = ((rotation % full) + full) % full;
+  let delta = (((target - current) % full) + full) % full;
+  // The full spin runs even with the system's reduce-motion setting on (common on iPhones): the wait is the point.
+  // That setting only turns off the confetti.
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const overshoot = p.length < 2 ? 0 : Math.min(.6 * seg, .45);
+  delta += full * 3;
+  const start = rotation, dur1 = 4500 + Math.random() * 300, dur2 = overshoot ? 800 : 0, t0 = performance.now();
+  setReadout('轉轉轉…', '');
+  let lastBulb = 0, prev = start;
+  function frame(now) {
+    const el = now - t0;
+    if (el < dur1) {
+      const t = el / dur1, e = 1 - Math.pow(1 - t, 2.2);
+      rotation = start + (delta + overshoot) * e;
+    } else if (el < dur1 + dur2) {
+      const t = (el - dur1) / dur2, e = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      rotation = start + delta + overshoot * (1 - e);
+    } else rotation = start + delta;
+    const speed = Math.abs(rotation - prev) / seg; prev = rotation;
+    if (now - lastBulb > (el < dur1 * .6 ? 60 : 140)) { bulbPhase++; lastBulb = now; }
+    const under = Math.floor((((-rotation) % full + full) % full) / seg) % p.length;
+    if (under !== lastTickSlice) {
+      lastTickSlice = under; $('roName').textContent = p[under].name;
+      tick(speed);
+    }
+    draw();
+    if (el < dur1 + dur2) requestAnimationFrame(frame);
+    else finish();
+  }
+  function finish() {
+    winner = pick; spinning = false; $('stage').classList.remove('live');
+    setReadout('轉到了', p[pick].name);
+    let n = 0;
+    const blink = setInterval(() => {
+      flashOn = !flashOn; draw();
+      if (++n >= 4) {
+        clearInterval(blink); flashOn = true; draw();
+        renderList(); showResult(p[pick]);
+        if (!reduce) confetti();
+        fanfare();
+        openReveal(p[pick]);
+      }
+    }, 110);
+  }
+  requestAnimationFrame(frame);
+}
+
+$('spin').onclick = spin;
+$('hub').onclick = spin;
+$('reroll').onclick = () => { if (!spinning) refresh(true); };
+document.querySelectorAll('.walk-pills button').forEach(btn => {
+  btn.onclick = () => { if (spinning) return; range = Number(btn.dataset.r); save(); refresh(true); };
+});
+document.querySelectorAll('.mode button').forEach(btn => {
+  btn.onclick = () => { if (spinning || btn.dataset.m === mode) return; mode = btn.dataset.m; clearResult(); save(); refresh(true); };
+});
+// Multi-select pills; at least one stays on so the wheel is never emptied by accident.
+function togglePill(list, v) { return list.includes(v) ? (list.length > 1 ? list.filter(x => x !== v) : list) : [...list, v]; }
+document.querySelectorAll('.cat-pills button').forEach(btn => {
+  btn.onclick = () => { if (spinning) return; catOn = togglePill(catOn, btn.dataset.c); save(); refresh(true); };
+});
+document.querySelectorAll('.price-pills button').forEach(btn => {
+  btn.onclick = () => { if (spinning) return; priceOn = togglePill(priceOn, btn.dataset.p); save(); refresh(true); };
+});
+$('q').addEventListener('input', () => { listLimit = LIST_PAGE; renderList(); });
+$('showAll').addEventListener('change', () => { listLimit = LIST_PAGE; renderList(); });
+$('more').onclick = () => { listLimit += LIST_PAGE; renderList(); };
+for (let m = 1; m <= 15; m++) {
+  const o = document.createElement('option'); o.value = m; o.textContent = `走路 ${m} 分`; if (m === 5) o.selected = true; $('fMin').append(o);
+}
+$('addForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const name = $('fName').value.trim(); if (!name || spinning) return;
+  const kind = $('fKind').value === 'drink' ? 'drink' : 'food';
+  items.push({ name, type: $('fType').value.trim(), kind, cat: kind === 'drink' ? 'restaurant' : $('fCat').value,
+    min: Number($('fMin').value), price: $('fPrice').value, addr: '' });
+  if (kind !== mode) { mode = kind; clearResult(); }
+  $('fName').value = ''; $('fType').value = '';
+  save(); refresh(true);
+});
+let armTimer = null;
+$('reset').onclick = () => {
+  const btn = $('reset');
+  if (!btn.classList.contains('armed')) {
+    btn.classList.add('armed'); btn.textContent = '再按一次確認恢復';
+    clearTimeout(armTimer); armTimer = setTimeout(() => { btn.classList.remove('armed'); btn.textContent = '恢復預設清單'; }, 3000);
+    return;
+  }
+  clearTimeout(armTimer); btn.classList.remove('armed'); btn.textContent = '恢復預設清單';
+  items = freshDefaults(); save(); refresh(true);
+};
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', draw);
+new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+new ResizeObserver(resize).observe($('stage'));
+if (document.fonts) document.fonts.ready.then(draw);
+clearResult(); reroll(); renderList(); resize();
+</script>
+</body>
+</html>
