@@ -260,6 +260,12 @@ h1 em { color: var(--ink); box-shadow: inset 0 -.32em 0 var(--yellow); }
 .cta, .go { background: var(--coral); color: var(--ink); border: 3px solid var(--ink); box-shadow: 0 4px 0 var(--ink); }
 .cta:active:not(:disabled), .go:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
 .go { margin-bottom: 4px; }
+.order { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 4px 0 10px; }
+.order a { display: flex; align-items: center; justify-content: center; min-height: 58px; padding: 6px 4px; border-radius: 16px; border: 3px solid var(--ink);
+  box-shadow: 0 4px 0 var(--ink); color: #fff; font-weight: 700; font-size: 1.02rem; text-decoration: none; text-align: center; }
+.order .uber { background: #06A55A; }
+.order .panda { background: #D70F64; }
+.order a:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
 .ghost { border: 2.5px solid var(--ink); background: var(--surface); color: var(--ink); }
 .ticket::before { display: none; }
 .ticket { background: var(--surface); }
@@ -515,6 +521,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     <div class="chips" id="mChips"></div>
     <p class="review" id="mReview"></p>
     <a class="go" id="mGo" target="_blank" rel="noopener">就決定是你了，帶我去</a>
+    <div class="order" id="mOrder" hidden>
+      <a class="uber" id="mUber" target="_blank" rel="noopener">Uber Eats 點餐</a>
+      <a class="panda" id="mPanda" target="_blank" rel="noopener">foodpanda 點餐</a>
+    </div>
     <div class="links" id="mLinks"></div>
     <div class="panel" id="mPanel" hidden></div>
   </div>
@@ -891,7 +901,9 @@ function openReveal(it) {
   $('mAddr').textContent = it.addr || '';
   fillDetails(it, $('mChips'), $('mReview'), $('mLinks'), false);
   $('mGo').href = routeUrl(it);
-  $('mGo').textContent = mode === 'deliv' ? '就決定是你了，叫外送' : '就決定是你了，帶我去';
+  $('mGo').hidden = mode === 'deliv'; $('mOrder').hidden = mode !== 'deliv';
+  $('mUber').href = 'https://www.ubereats.com/tw/search?q=' + encodeURIComponent(it.name);
+  $('mPanda').href = 'https://www.google.com/search?q=' + encodeURIComponent(it.name + ' foodpanda');
   const delAct = [...$('mLinks').children].find(b => b.textContent === '外送'); if (delAct) delAct.hidden = mode === 'deliv';
   const again = iconize(document.createElement('button'), 'again', '再轉'); again.type = 'button';
   again.onclick = () => { closeReveal(); refresh(true); spin(); };
@@ -906,12 +918,7 @@ function closeReveal() {
   if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
 }
 $('mOk').onclick = closeReveal;
-$('mGo').addEventListener('click', e => {
-  if (mode !== 'deliv') { setTimeout(closeReveal, 300); return; }
-  e.preventDefault();
-  const delAct = [...$('mLinks').children].find(b => b.textContent === '外送');
-  if (delAct && delAct.getAttribute('aria-expanded') !== 'true') delAct.click();
-});
+$('mGo').addEventListener('click', () => setTimeout(closeReveal, 300));
 $('reveal').addEventListener('click', e => { if (e.target === $('reveal')) closeReveal(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('reveal').hidden) closeReveal(); });
 
